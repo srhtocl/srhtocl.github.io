@@ -1,11 +1,11 @@
 # _config.yml
 defaults:
   - scope:
-      path: message
+      path: /message
     values:
       permalink: /message/
 
   - scope:
-      path: response
+      path: /response
     values:
       permalink: /response/
