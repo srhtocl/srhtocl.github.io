@@ -16,11 +16,29 @@ export const requestNotificationPermission = async () => {
     return false;
 };
 
-export const sendNotification = (title, body) => {
-    if (Notification.permission === "granted") {
+export const sendNotification = async (title, body) => {
+    if (Notification.permission !== "granted") return;
+
+    try {
+        // Try Service Worker first (Required for Android/PWA)
+        if ('serviceWorker' in navigator) {
+            const registration = await navigator.serviceWorker.ready;
+            if (registration && 'showNotification' in registration) {
+                await registration.showNotification(title, {
+                    body,
+                    icon: "/favicon.ico"
+                });
+                return;
+            }
+        }
+
+        // Fallback for Desktop/Standard
         new Notification(title, {
             body,
-            icon: "/favicon.ico", // Assuming favicon exists, or use a specific logo
+            icon: "/favicon.ico",
         });
+
+    } catch (error) {
+        console.warn("Bildirim hatası (Önemsiz):", error);
     }
 };
