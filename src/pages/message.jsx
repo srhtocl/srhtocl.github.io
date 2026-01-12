@@ -1,98 +1,30 @@
-import React, { useState, useEffect, useRef } from "react";
-import Cookies from "js-cookie";
+import React, { useState } from "react";
 import MessageField from "../components/message-field";
-import { getDocumentsByUsername, insertDocument, setDocument, subscribeToMessages } from "../services/db-methods";
-import { FiSend } from "react-icons/fi";
-import { requestNotificationPermission, sendNotification } from "../services/notification";
+import { FiSend, FiBellOff } from "react-icons/fi";
+import { useChat } from "../hooks/useChat";
 
 
 export default function Message() {
     const [draft, setDraft] = useState("");
-    const [messages, setMessages] = useState([]);
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
 
-
-    const lastMsgCount = useRef(0);
-
-    // Request Notification Permission
-    useEffect(() => {
-        requestNotificationPermission();
-    }, []);
-
-    // Handle Notifications
-    useEffect(() => {
-        if (loading) {
-            lastMsgCount.current = messages.length;
-            return;
-        }
-
-        if (messages.length > lastMsgCount.current) {
-            const newMsg = messages[messages.length - 1];
-            // If the sender is 'admin', notify the visitor
-            if (newMsg.user === "admin") {
-                sendNotification("Yeni Cevap Var!", newMsg.data);
-            }
-            lastMsgCount.current = messages.length;
-        }
-    }, [messages, loading]);
-
-    useEffect(() => {
-        let unsubscribe = null;
-
-        const initialize = async () => {
-            // Check for existing cookie
-            let currentUser = Cookies.get('user');
-
-            if (!currentUser) {
-                // Generate new user ID
-                currentUser = (new Date()).getTime().toString(16);
-                Cookies.set('user', currentUser, { expires: 7 });
-
-                // Create new document in Firestore
-                await insertDocument({ user: currentUser, messages: [] });
-            } else {
-                // Refresh cookie expiration
-                Cookies.set('user', currentUser, { expires: 7 });
-            }
-
-            setUser(currentUser);
-
-            // Subscribe to real-time updates
-            unsubscribe = subscribeToMessages(currentUser, (data) => {
-                if (data && data.messages) {
-                    setMessages(data.messages);
-                }
-                setLoading(false);
-            });
-        };
-
-        initialize();
-
-        return () => {
-            if (unsubscribe) unsubscribe();
-        };
-    }, []);
-
-
+    // Use Custom Hook
+    const {
+        user,
+        messages,
+        loading,
+        sending,
+        sendMessage,
+        notificationPermission,
+        enableNotifications
+    } = useChat();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!draft.trim()) return;
+        if (!draft.trim() || sending) return;
 
-        const newMessage = {
-            user: user,
-            time: (new Date()).getTime(),
-            data: draft.trim()
-        };
-
-        const updatedMessages = [...messages, newMessage];
-        setMessages(updatedMessages);
+        await sendMessage(draft);
         setDraft("");
-
-        // Optimistic update - send to DB
-        await setDocument(user, { user: user, messages: updatedMessages });
     };
 
     return (
@@ -103,9 +35,23 @@ export default function Message() {
             <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-gray-300 rounded-full mix-blend-multiply filter blur-[60px] opacity-20 animate-blob animation-delay-2000 pointer-events-none"></div>
 
 
+            {/* Notification Permission Banner / Button */}
+            {/* Show only if permission is NOT granted (default or denied) */}
+            {notificationPermission !== 'granted' && !loading && (
+                <div className="absolute top-4 right-4 z-50">
+                    <button
+                        onClick={enableNotifications}
+                        className="flex items-center gap-2 bg-white/80 backdrop-blur-md shadow-lg border border-slate-200 px-3 py-2 rounded-full text-slate-600 text-sm hover:bg-white hover:text-blue-600 transition-all animate-pulse"
+                        title="Bildirimleri Aç"
+                    >
+                        <FiBellOff size={16} />
+                        <span>Bildirimleri Aç</span>
+                    </button>
+                </div>
+            )}
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto z-10 w-full max-w-2xl mx-auto px-4 custom-scrollbar pb-4 pt-4">
+            <div className="flex-1 overflow-y-auto z-10 w-full max-w-2xl mx-auto px-4 custom-scrollbar pb-4 pt-16">
                 {loading ? (
                     <div className="flex items-center justify-center h-full">
                         <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
@@ -130,10 +76,10 @@ export default function Message() {
                     />
                     <button
                         type="submit"
-                        disabled={!draft.trim()}
+                        disabled={!draft.trim() || sending}
                         className="flex-none flex items-center justify-center w-12 h-12 bg-slate-900 text-white rounded-xl hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md active:scale-95"
                     >
-                        <FiSend size={20} className={draft.trim() ? "translate-x-0.5" : ""} />
+                        {sending ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <FiSend size={20} className={draft.trim() ? "translate-x-0.5" : ""} />}
                     </button>
                 </form>
             </div>

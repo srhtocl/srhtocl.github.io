@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import { NavLink, useNavigate, useLocation, useMatches } from "react-router-dom";
 import { FiMenu, FiChevronLeft, FiLogOut, FiUser, FiEdit3, FiUsers } from "react-icons/fi";
 import { useAuth } from "../context/auth-context";
 
@@ -8,6 +8,7 @@ export const Header = () => {
     const authContext = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
+    const matches = useMatches();
 
     // Only show header if user is logged in
     if (!authContext.user) return null;
@@ -18,17 +19,11 @@ export const Header = () => {
         navigate("/");
     };
 
-    const getPageTitle = (pathname) => {
-        switch (pathname) {
-            case "/": return "Ana Sayfa";
-            case "/posts": return "";
-            case "/create-post": return "Yeni Gönderi";
-            case "/all-messages": return "Mesajlar";
-            default:
-                if (pathname.includes("/response")) return "Cevap Yaz";
-                return "srhtocl";
-        }
-    };
+    // Get title from the current route handle (the last matching route with a handle)
+    const currentTitle = matches
+        .filter((match) => Boolean(match.handle?.title))
+        .map((match) => match.handle.title)
+        .pop() || "srhtocl";
 
     const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
@@ -62,7 +57,7 @@ export const Header = () => {
                 {/* Center: Title */}
                 <div className="flex-1 text-center">
                     <h1 className="text-lg font-bold text-slate-800 font-['Ubuntu'] truncate px-2">
-                        {getPageTitle(location.pathname)}
+                        {currentTitle}
                     </h1>
                 </div>
 
@@ -97,7 +92,7 @@ export const Header = () => {
 
                     <div className="py-2 pb-24 px-6 pt-6">
                         <MenuItem icon={FiUser} label="Profile git" onClick={() => { setIsMenuOpen(false); navigate("/"); }} />
-                        <MenuItem icon={FiEdit3} label="Profili Düzenle" onClick={() => setIsMenuOpen(false)} />
+                        <MenuItem icon={FiEdit3} label="Profili Düzenle" onClick={() => { setIsMenuOpen(false); navigate("/edit-profile"); }} />
                         <MenuItem icon={FiLogOut} label="Çıkış Yap" onClick={handleLogout} isRed />
                     </div>
 

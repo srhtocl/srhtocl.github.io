@@ -1,19 +1,41 @@
-export const requestNotificationPermission = async () => {
-    if (!("Notification" in window)) {
-        console.log("This browser does not support desktop notification");
-        return false;
-    }
+import { messaging, db } from "./firebase";
+import { getToken } from "firebase/messaging";
+import { doc, setDoc } from "firebase/firestore";
 
-    if (Notification.permission === "granted") {
-        return true;
-    }
-
-    if (Notification.permission !== "denied") {
+export const requestForToken = async (userId) => {
+    try {
         const permission = await Notification.requestPermission();
-        return permission === "granted";
-    }
+        if (permission === 'granted') {
+            const token = await getToken(messaging, {
+                vapidKey: "BBhWNZ1gSMzdcK2Tr4OhE2wu6m9YtlHVoZ72xsxHFVmDRQEOheC_nXvBKIhPEsW1UHZ2FL9j5GNr57g8VTrgNqw"
+            });
 
-    return false;
+            if (token) {
+                console.log('FCM Token Alındı:', token);
+                await saveTokenToDatabase(userId, token);
+                return token;
+            }
+        }
+    } catch (err) {
+        console.log('Token alma hatası:', err);
+    }
+    return null;
+};
+
+const saveTokenToDatabase = async (userId, token) => {
+    if (!userId) return;
+    try {
+        const tokenRef = doc(db, "tokens", userId);
+        await setDoc(tokenRef, { token: token, updatedAt: new Date() }, { merge: true });
+    } catch (error) {
+        console.error("Token kaydetme hatası:", error);
+    }
+}
+
+export const requestNotificationPermission = async () => {
+    // Basic request without saving token (legacy/fallback)
+    const permission = await Notification.requestPermission();
+    return permission === 'granted';
 };
 
 export const sendNotification = async (title, body) => {

@@ -1,67 +1,38 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import MessageField from "../components/message-field";
-import { setDocument, subscribeToMessages } from "../services/db-methods";
 import { FiSend } from "react-icons/fi";
 import { useAuth } from "../context/auth-context";
-import { requestNotificationPermission, sendNotification } from "../services/notification";
+import { requestForToken } from "../services/notification";
+import { useChat } from "../hooks/useChat";
 
 export default function Response() {
     const { userid } = useParams();
     const navigate = useNavigate();
     const authContext = useAuth();
-    const lastMsgCount = useRef(0);
 
-    // Redirect if not admin/logged in
+    // Redirect if not admin
     useEffect(() => {
         if (!authContext.user) navigate("/");
+        else requestForToken("admin_device");
     }, [authContext.user, navigate]);
 
+
+    // Use Custom Hook with target user ID
+    const {
+        messages,
+        loading,
+        sending,
+        sendMessage
+    } = useChat(userid);
+
     const [draft, setDraft] = useState("");
-    const [messages, setMessages] = useState([]);
-    const [loading, setLoading] = useState(true);
-
-    // Subscribe to real-time messages
-    useEffect(() => {
-        if (!userid) return;
-
-        const unsubscribe = subscribeToMessages(userid, (data) => {
-            if (data && data.messages) {
-                setMessages(data.messages);
-            }
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, [userid]);
-
-    // Notification Logic
-    useEffect(() => {
-        if (loading) {
-            lastMsgCount.current = messages.length;
-            return;
-        }
-        if (messages.length > lastMsgCount.current) {
-            const newMsg = messages[messages.length - 1];
-            if (newMsg && newMsg.user !== "admin") {
-                sendNotification("Yeni Cevap!", newMsg.data);
-            }
-            lastMsgCount.current = messages.length;
-        }
-    }, [messages, loading]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!draft.trim()) return;
-
-        const updatedMessages = [...messages, { user: "admin", time: (new Date()).getTime(), data: draft.trim() }];
-
-        // Optimistic update
-        setMessages(updatedMessages);
+        // Send as Admin
+        await sendMessage(draft, true);
         setDraft("");
-
-        // Send to DB
-        await setDocument(userid, { user: userid, messages: updatedMessages });
     };
 
     return (
@@ -97,10 +68,10 @@ export default function Response() {
                     />
                     <button
                         type="submit"
-                        disabled={!draft.trim()}
+                        disabled={!draft.trim() || sending}
                         className="flex-none flex items-center justify-center w-12 h-12 bg-slate-900 text-white rounded-xl hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md active:scale-95"
                     >
-                        <FiSend size={20} className={draft.trim() ? "translate-x-0.5" : ""} />
+                        {sending ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <FiSend size={20} className={draft.trim() ? "translate-x-0.5" : ""} />}
                     </button>
                 </form>
             </div>

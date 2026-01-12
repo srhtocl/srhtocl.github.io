@@ -2,20 +2,18 @@ import React, { useEffect, useState, useRef } from "react";
 import { deleteDocument, subscribeToAllMessages } from "../services/db-methods";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/auth-context";
-import { FiMessageSquare, FiTrash2 } from "react-icons/fi";
-import { requestNotificationPermission, sendNotification } from "../services/notification";
+import { FiMessageSquare, FiTrash2, FiBellOff } from "react-icons/fi";
+import { requestForToken, sendNotification } from "../services/notification";
+import toast from "react-hot-toast";
 
 function AllMessage() {
     const [messages, setMessages] = useState([]);
+    const [notificationPermission, setNotificationPermission] = useState(Notification.permission);
     const authContext = useAuth();
     const navigate = useNavigate();
 
     const totalMsgRef = useRef(0);
     const firstLoad = useRef(true);
-
-    useEffect(() => {
-        requestNotificationPermission();
-    }, []);
 
     useEffect(() => {
         if (!messages) return;
@@ -31,13 +29,10 @@ function AllMessage() {
             return;
         }
 
-        if (currentTotal > totalMsgRef.current) {
-            sendNotification("Anonim Mesaj!", "Yeni bir mesaj aldınız.");
-            totalMsgRef.current = currentTotal;
-        } else {
-            // Update ref for deletions or initial setup
-            totalMsgRef.current = currentTotal;
-        }
+        // Update ref for deletions or new messages without triggering local notification
+        // Relying on Backend FCM for notifications now.
+        totalMsgRef.current = currentTotal;
+
     }, [messages]);
 
     useEffect(() => {
@@ -50,17 +45,38 @@ function AllMessage() {
             setMessages(data);
         });
 
+        // Check if permission is already granted, if so, ensure token is up to date
+        if (Notification.permission === 'granted') {
+            requestForToken("admin_device");
+        }
+
         return () => unsubscribe();
     }, [authContext.user, navigate]);
+
+    const handleEnableNotifications = async () => {
+        // This triggers the browser prompt and saves to 'admin_device'
+        const token = await requestForToken("admin_device");
+        setNotificationPermission(Notification.permission);
+        if (token) {
+            console.log("Admin bildirimleri açıldı.");
+        }
+    };
 
     const handleDelete = async (e, docId) => {
         e.preventDefault(); // Prevent Link navigation
         e.stopPropagation(); // Stop event bubbling
 
         if (window.confirm("Bu mesajı silmek istediğinize emin misiniz?")) {
-            await deleteDocument(docId);
-            // Optimistic UI update
-            setMessages(prev => prev.filter(msg => msg.docId !== docId));
+            const response = await deleteDocument(docId);
+
+            if (response.success) {
+                toast.success("Mesaj silindi.");
+                // Optimistic UI update
+                setMessages(prev => prev.filter(msg => msg.docId !== docId));
+            } else {
+                toast.error("Silme işlemi başarısız!");
+                console.error(response.error);
+            }
         }
     };
 
@@ -70,6 +86,20 @@ function AllMessage() {
             {/* Background Atmosphere */}
             <div className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] bg-slate-200 rounded-full mix-blend-multiply filter blur-[80px] opacity-20 animate-blob pointer-events-none"></div>
             <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] bg-blue-100 rounded-full mix-blend-multiply filter blur-[80px] opacity-20 animate-blob animation-delay-2000 pointer-events-none"></div>
+
+            {/* Notification Permission Banner / Button */}
+            {notificationPermission !== 'granted' && (
+                <div className="absolute top-4 right-4 z-50">
+                    <button
+                        onClick={handleEnableNotifications}
+                        className="flex items-center gap-2 bg-white/80 backdrop-blur-md shadow-lg border border-slate-200 px-3 py-2 rounded-full text-slate-600 text-sm hover:bg-white hover:text-blue-600 transition-all animate-pulse"
+                        title="Bildirimleri Aç"
+                    >
+                        <FiBellOff size={16} />
+                        <span>Bildirimleri Aç</span>
+                    </button>
+                </div>
+            )}
 
             {/* List Container */}
             <div className="flex-1 overflow-y-auto px-4 py-6 z-10 space-y-3 pt-24 pb-24">

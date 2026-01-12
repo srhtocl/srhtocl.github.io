@@ -11,7 +11,9 @@ const Response = React.lazy(() => import("../pages/response"));
 const AllMessage = React.lazy(() => import("../pages/messages"));
 const Login = React.lazy(() => import("../auth/login"));
 const CreatePost = React.lazy(() => import("../pages/create-post"));
+
 const AllPosts = React.lazy(() => import("../pages/read-post"));
+const EditProfile = React.lazy(() => import("../pages/edit-profile"));
 
 // Loading Fallback
 const LoadingScreen = () => (
@@ -20,6 +22,12 @@ const LoadingScreen = () => (
     </div>
 );
 
+// --- Kod Bölme (Code-Splitting) ve Tembel Yükleme (Lazy Loading) ---
+// Loadable, bir bileşeni parametre olarak alan ve onu React.Suspense ile saran bir fonksiyondur (Higher-Order Component).
+// Suspense, içine aldığı bileşenlerin (bu durumda lazy ile yüklenen sayfaların) yüklenmesini bekler.
+// Yükleme sırasında, `fallback` prop'u olarak verilen `LoadingScreen` bileşenini ekranda gösterir.
+// Bu yapı, her sayfanın kodunun sadece o sayfaya gidildiğinde indirilmesini sağlar,
+// böylece uygulamanın başlangıç yükleme süresi kısalır ve performans artar.
 const Loadable = (Component) => (
     <Suspense fallback={<LoadingScreen />}>
         <Component />
@@ -36,15 +44,18 @@ const router = createHashRouter([
             {
                 index: true,
                 element: Loadable(Home),
+                handle: { title: "Ana Sayfa" }
             },
             {
                 path: "/message",
                 element: Loadable(Message),
+                handle: { title: "Mesaj Gönder" }
             },
 
             {
                 path: "/login",
                 element: Loadable(Login),
+                handle: { title: "Giriş Yap" }
             },
 
             // Protected Routes with Layout
@@ -54,14 +65,23 @@ const router = createHashRouter([
                     {
                         path: "/all-messages",
                         element: Loadable(AllMessage),
+                        handle: { title: "Mesajlar" }
                     },
                     {
                         path: "/create-post",
                         element: Loadable(CreatePost),
+                        handle: { title: "Yeni Gönderi" }
                     },
                     {
                         path: "/posts",
                         element: Loadable(AllPosts),
+
+                        handle: { title: "Gönderiler" }
+                    },
+                    {
+                        path: "/edit-profile",
+                        element: Loadable(EditProfile),
+                        handle: { title: "Profili Düzenle" }
                     }
                 ]
             }
@@ -74,6 +94,7 @@ const router = createHashRouter([
             {
                 path: "/response/:userid",
                 element: Loadable(Response),
+                handle: { title: "Cevap Yaz" }
             }
         ]
     }
