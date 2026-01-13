@@ -1,1 +1,0 @@
-import{d as t,j as e}from"./index-CVH5nPcp.js";function a(){const r=t();return e.jsx("div",{id:"error-page",className:"flex flex-col items-center justify-center h-screen bg-gray-100 font-sans text-xl text-red-600",children:e.jsxs("p",{children:["Bir Hata Oluştu: ",e.jsx("i",{children:r.statusText||r.message})]})})}export{a as default};
