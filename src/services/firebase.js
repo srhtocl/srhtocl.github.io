@@ -26,7 +26,7 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 
 // Get a reference to the message collection
-const collectionRef = collection(db, "srhtocl");
+const collectionRef = collection(db, "chats");
 
 // Get a reference to the message collection
 const postCollectionRef = collection(db, "post");

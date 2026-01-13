@@ -11,7 +11,9 @@ export const useChat = (targetUserId = null) => {
     const [sending, setSending] = useState(false);
 
     // Permission state is managed here to be accessible by UI
-    const [notificationPermission, setNotificationPermission] = useState(Notification.permission);
+    const [notificationPermission, setNotificationPermission] = useState(
+        typeof Notification !== 'undefined' ? Notification.permission : 'default'
+    );
 
     // Ref to track if we've loaded initial messages (useful for notification logic if we move it back here later)
     const initialLoadComplete = useRef(false);
@@ -41,7 +43,7 @@ export const useChat = (targetUserId = null) => {
                 }
 
                 // Only request automatically if ALREADY granted
-                if (Notification.permission === 'granted') {
+                if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
                     requestForToken(currentUser);
                 }
             }
@@ -92,7 +94,7 @@ export const useChat = (targetUserId = null) => {
             // We could remove the failed message from state here if we wanted strictly consistent UI
         } else {
             // Success Logic
-            if (!asAdmin && !targetUserId && Notification.permission !== 'granted') {
+            if (!asAdmin && !targetUserId && typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
                 await requestForToken(user);
                 setNotificationPermission(Notification.permission);
             }
@@ -103,6 +105,11 @@ export const useChat = (targetUserId = null) => {
 
     const enableNotifications = async () => {
         if (!user) return;
+        if (typeof Notification === 'undefined') {
+            toast.error("Tarayıcınız bildirimleri desteklemiyor.");
+            return;
+        }
+
         const token = await requestForToken(targetUserId || user); // Admin uses specific ID usually, but here 'user' is the chat ID. 
         // Wait, for Admin, we usually register 'admin_device'. 
         // Logic split:

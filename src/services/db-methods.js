@@ -118,7 +118,7 @@ async function setDocument(user, payload) {
         const docData = response.data;
         const docRef = doc(collectionRef, docData.id);
 
-        await setDoc(docRef, payload);
+        await setDoc(docRef, payload, { merge: true });
         return createResponse(true);
 
     } catch (error) {

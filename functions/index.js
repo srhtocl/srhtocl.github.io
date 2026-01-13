@@ -3,7 +3,7 @@ const admin = require("firebase-admin");
 admin.initializeApp();
 
 exports.sendNotificationOnMessage = functions.firestore
-    .document("srhtocl/{userId}")
+    .document("chats/{userId}")
     .onUpdate(async (change, context) => {
         const newData = change.after.data();
         const oldData = change.before.data();
@@ -38,14 +38,14 @@ exports.sendNotificationOnMessage = functions.firestore
             if (newMsg.user === "admin") {
                 // SCENARIO 1: Admin replied -> Notify The Visitor
 
-                // Fetch visitor's token from 'tokens/{userId}'
-                const userTokenDoc = await admin.firestore().collection("tokens").doc(userId).get();
-                if (!userTokenDoc.exists) {
-                    console.log("Bu kullanicinin tokeni yok:", userId);
+                // Fetch visitor's token directly from the chat document (newData)
+                const token = newData.fcmToken;
+
+                if (!token) {
+                    console.log("Bu kullanicinin tokeni yok (fcmToken eksik):", userId);
                     return null;
                 }
 
-                const token = userTokenDoc.data().token;
                 if (token) {
                     // Update payload for visitor
                     payload.notification.title = "Admin'den Cevap Var!";
@@ -66,10 +66,10 @@ exports.sendNotificationOnMessage = functions.firestore
             } else {
                 // SCENARIO 2: Visitor wrote -> Notify Admin
 
-                // Fetch Admin's token from 'tokens/admin_device'
-                const adminTokenDoc = await admin.firestore().collection("tokens").doc("admin_device").get();
+                // Fetch Admin's token from 'admin/notifications'
+                const adminTokenDoc = await admin.firestore().collection("admin").doc("notifications").get();
                 if (!adminTokenDoc.exists) {
-                    console.log("Admin tokeni bulunamadi.");
+                    console.log("Admin tokeni bulunamadi (admin/notifications).");
                     return null;
                 }
 

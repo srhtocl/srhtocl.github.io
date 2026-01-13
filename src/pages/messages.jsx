@@ -8,7 +8,9 @@ import toast from "react-hot-toast";
 
 function AllMessage() {
     const [messages, setMessages] = useState([]);
-    const [notificationPermission, setNotificationPermission] = useState(Notification.permission);
+    const [notificationPermission, setNotificationPermission] = useState(
+        typeof Notification !== 'undefined' ? Notification.permission : 'default'
+    );
     const authContext = useAuth();
     const navigate = useNavigate();
 
@@ -46,7 +48,7 @@ function AllMessage() {
         });
 
         // Check if permission is already granted, if so, ensure token is up to date
-        if (Notification.permission === 'granted') {
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
             requestForToken("admin_device");
         }
 
@@ -54,6 +56,10 @@ function AllMessage() {
     }, [authContext.user, navigate]);
 
     const handleEnableNotifications = async () => {
+        if (typeof Notification === 'undefined') {
+            toast.error("Tarayıcınız bildirimleri desteklemiyor.");
+            return;
+        }
         // This triggers the browser prompt and saves to 'admin_device'
         const token = await requestForToken("admin_device");
         setNotificationPermission(Notification.permission);

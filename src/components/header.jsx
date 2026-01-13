@@ -23,7 +23,7 @@ export const Header = () => {
     const currentTitle = matches
         .filter((match) => Boolean(match.handle?.title))
         .map((match) => match.handle.title)
-        .pop() || "srhtocl";
+        .pop() || "Chat";
 
     const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 

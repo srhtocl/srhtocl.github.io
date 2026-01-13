@@ -3,6 +3,11 @@ import { getToken } from "firebase/messaging";
 import { doc, setDoc } from "firebase/firestore";
 
 export const requestForToken = async (userId) => {
+    if (!('Notification' in window)) {
+        console.log("This browser does not support desktop notification");
+        return null;
+    }
+
     try {
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
@@ -25,21 +30,33 @@ export const requestForToken = async (userId) => {
 const saveTokenToDatabase = async (userId, token) => {
     if (!userId) return;
     try {
-        const tokenRef = doc(db, "tokens", userId);
-        await setDoc(tokenRef, { token: token, updatedAt: new Date() }, { merge: true });
+        if (userId === 'admin_device') {
+            // Admin token goes to 'admin' collection
+            const tokenRef = doc(db, "admin", "notifications");
+            await setDoc(tokenRef, { token: token, updatedAt: new Date() }, { merge: true });
+        } else {
+            // Visitor token goes directly into their chat document in 'chats' collection
+            const userChatRef = doc(db, "chats", userId);
+            // We use setDoc with merge: true so we don't overwrite messages if they exist,
+            // or we create the doc if it doesn't (though useChat usually creates it first).
+            await setDoc(userChatRef, { fcmToken: token, tokenUpdatedAt: new Date() }, { merge: true });
+        }
     } catch (error) {
         console.error("Token kaydetme hatası:", error);
     }
 }
 
 export const requestNotificationPermission = async () => {
+    if (!('Notification' in window)) {
+        return false;
+    }
     // Basic request without saving token (legacy/fallback)
     const permission = await Notification.requestPermission();
     return permission === 'granted';
 };
 
 export const sendNotification = async (title, body) => {
-    if (Notification.permission !== "granted") return;
+    if (!('Notification' in window) || Notification.permission !== "granted") return;
 
     try {
         // Try Service Worker first (Required for Android/PWA)
