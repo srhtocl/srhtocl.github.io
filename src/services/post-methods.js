@@ -123,6 +123,9 @@ async function deleteDocument(docId) {
 
         const docRef = doc(postCollectionRef, docId);
 
+        // Reverted: We do NOT delete images from Storage automatically anymore.
+        // User wants to keep them for a potential Gallery feature.
+
         await deleteDoc(docRef);
 
     } catch (error) {

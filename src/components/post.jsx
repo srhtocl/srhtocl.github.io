@@ -1,17 +1,37 @@
+/**
+ * @file post.jsx
+ * @description Tek bir gönderiyi (Post) görüntüleyen ana bileşen.
+ * Başlık (Avatar/İsim), İçerik (Metin/Görsel) ve Alt Bilgi (Footer) alanlarından oluşur.
+ * 
+ * @dependencies
+ * - src/components/post-images.jsx (Görsel Slider yönetimi)
+ * - src/services/post-methods.js (Silme işlemi)
+ * 
+ * @date 2026-01-17
+ * @author [AI Assistant]
+ * 
+ * @notes
+ * - Görsel mantığı `PostImages` bileşenine devredilmiştir.
+ * - Admin yetkisi kontrolü burada yapılır.
+ */
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
-import { FiMoreVertical, FiEdit2, FiTrash2, FiImage, FiLink } from 'react-icons/fi';
+import { FiMoreVertical, FiEdit2, FiTrash2, FiLink } from 'react-icons/fi';
 import { deleteDocument } from '../services/post-methods';
+import { useAuth } from '../context/auth-context';
+import PostImages from './post-images';
 
 const Post = ({ post, onDelete }) => {
   const [showMenu, setShowMenu] = useState(false);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const handleDelete = async () => {
     if (window.confirm("Bu gönderiyi silmek istediğinize emin misiniz?")) {
       const result = await deleteDocument(post.id);
-      if (result === null) { // deleteDocument returns null on success based on our service
+      if (result === null) {
         if (onDelete) onDelete(post.id);
       } else {
         alert("Silme işlemi başarısız oldu.");
@@ -19,86 +39,100 @@ const Post = ({ post, onDelete }) => {
     }
   };
 
+  // Convert legacy/single image format to array
+  const rawImages = post.images && Array.isArray(post.images) ? post.images : (post.image_url ? [post.image_url] : []);
+  const hasImages = rawImages.length > 0;
+
   return (
-    <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden relative">
+    <div className="bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden group">
 
       {/* 1. Header Area */}
-      <div className="bg-slate-100/50 px-4 py-3 flex justify-between items-center border-b border-slate-100">
+      <div className="px-4 py-3 flex justify-between items-start bg-slate-100/50 border-b border-slate-50">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden p-0.5 border border-slate-200">
+          <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden ring-2 ring-slate-50">
             <img
               src="https://pbs.twimg.com/profile_images/1483105275766882304/4CYpr2hO_400x400.jpg"
-              alt="Serhat Öcal"
-              className="w-full h-full rounded-full object-cover"
+              alt="Profile"
+              className="w-full h-full object-cover"
             />
           </div>
           <div className="flex flex-col">
-            <span className="text-slate-700 font-bold text-sm font-['Ubuntu']">serhat öcal</span>
-            <span className="text-slate-400 text-xs">
-              {(() => {
-                const rawDate = post.timestamp;
-                const date = rawDate?.toDate ? rawDate.toDate() : new Date(rawDate || Date.now());
-                return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
-              })()}
+            <h3 className="text-slate-800 font-bold text-sm font-['Ubuntu']">Serhat Öcal</h3>
+            <span className="text-slate-400 text-xs font-['Ubuntu']">
+              {post.timestamp?.seconds
+                ? new Date(post.timestamp.seconds * 1000).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+                : 'Tarih yok'}
             </span>
           </div>
         </div>
 
-        {/* Menu Button */}
-        <div className="relative">
-          <button
-            onClick={() => setShowMenu(!showMenu)}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 rounded-full transition-colors"
-          >
-            <FiMoreVertical size={20} />
-          </button>
+        {/* Menu Button (Only for Admin) */}
+        {user && user.uid === "2t2Fg2aX8ePpfhsDAWoYEosDcmv1" && (
+          <div className="relative">
+            <button onClick={() => setShowMenu(!showMenu)} className="p-2 text-slate-300 hover:text-slate-500 transition-colors">
+              <FiMoreVertical size={20} />
+            </button>
 
-          {/* ... Menu Dropdown ... */}
-          {showMenu && (
-            <div className="absolute right-0 top-full mt-2 w-36 bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-20 overflow-hidden animate-in fade-in zoom-in duration-200">
-              <button
-                onClick={() => navigate('/create-post', { state: { postToEdit: post } })}
-                className="w-full text-left px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2 transition-colors"
-              >
-                <FiEdit2 size={14} />
-                <span>Düzenle</span>
-              </button>
-              <button
-                onClick={handleDelete}
-                className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 flex items-center gap-2 transition-colors"
-              >
-                <FiTrash2 size={14} />
-                <span>Sil</span>
-              </button>
-            </div>
-          )}
-
-          {/* Click outside overlay to close menu */}
-          {showMenu && (
-            <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)}></div>
-          )}
-        </div>
+            {showMenu && (
+              <div className="absolute right-0 top-8 bg-white border border-slate-100 shadow-lg rounded-lg py-1 w-32 z-20 animate-in fade-in zoom-in-95 duration-200">
+                <button
+                  onClick={() => navigate('/create-post', { state: { postToEdit: post } })}
+                  className="w-full text-left px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2"
+                >
+                  <FiEdit2 size={14} /> Düzenle
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 flex items-center gap-2"
+                >
+                  <FiTrash2 size={14} /> Sil
+                </button>
+              </div>
+            )}
+            {/* Click outside overlay to close menu */}
+            {showMenu && (
+              <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)}></div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 2. Body Area (Content) */}
       <div className="p-4 bg-slate-50/30 min-h-[5rem]">
-        <p className="text-slate-700 font-['Ubuntu'] text-lg leading-relaxed whitespace-pre-wrap">
-          {post.content}
-        </p>
+        {hasImages ? (
+          <PostImages images={rawImages} content={post.content} />
+        ) : (
+          <p className="text-slate-700 font-['Ubuntu'] text-lg leading-relaxed whitespace-pre-wrap">
+            {post.content}
+          </p>
+        )}
       </div>
 
       {/* 3. Footer Area (Visual Actions) */}
-      <div className="bg-slate-100/50 px-4 py-3 flex items-center gap-4 border-t border-slate-100">
-        <button className="flex items-center gap-2 text-slate-400 hover:text-blue-500 transition-colors group" title="Görsel (Yakında)">
-          <FiImage size={20} className="group-hover:scale-110 transition-transform" />
-        </button>
+      <div className="bg-slate-100/50 px-4 py-3 flex items-center gap-4 border-t border-slate-100 min-h-[3.5rem]">
+
+        {/* Only Link Button Remains */}
         <button className="flex items-center gap-2 text-slate-400 hover:text-blue-500 transition-colors group" title="Bağlantı (Yakında)">
           <FiLink size={20} className="group-hover:scale-110 transition-transform" />
         </button>
       </div>
-
     </div>
   );
+};
+
+Post.propTypes = {
+  post: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    content: PropTypes.string.isRequired,
+    image_url: PropTypes.string,
+    images: PropTypes.arrayOf(PropTypes.string),
+    timestamp: PropTypes.shape({
+      seconds: PropTypes.number,
+      nanoseconds: PropTypes.number,
+      toDate: PropTypes.func,
+    }),
+  }).isRequired,
+  onDelete: PropTypes.func,
 };
 
 export default Post;

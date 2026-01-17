@@ -2,6 +2,7 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 admin.initializeApp();
 
+// Last Updated: 2026-01-13 (Force Deploy - URL Fix)
 exports.sendNotificationOnMessage = functions.firestore
     .document("chats/{userId}")
     .onUpdate(async (change, context) => {
@@ -29,8 +30,8 @@ exports.sendNotificationOnMessage = functions.firestore
             },
             // Data payload is often crucial for PWA click handling
             data: {
-                click_action: "https://srhtocl.github.io/srhtocl/",
-                url: "https://srhtocl.github.io/srhtocl/"
+                click_action: "https://srhtocl.github.io/",
+                url: "https://srhtocl.github.io/"
             }
         };
 
@@ -49,7 +50,7 @@ exports.sendNotificationOnMessage = functions.firestore
                 if (token) {
                     // Update payload for visitor
                     payload.notification.title = "Admin'den Cevap Var!";
-                    payload.data.url = "https://srhtocl.github.io/srhtocl/#/message";
+                    payload.data.url = "https://srhtocl.github.io/#/message";
 
                     await admin.messaging().send({
                         token: token,
@@ -78,7 +79,7 @@ exports.sendNotificationOnMessage = functions.firestore
                     // Update payload for Admin
                     payload.notification.title = "Yeni Anonim Mesaj!";
                     // Redirect admin specifically to that user's chat
-                    payload.data.url = `https://srhtocl.github.io/srhtocl/#/response/${userId}`;
+                    payload.data.url = `https://srhtocl.github.io/#/response/${userId}`;
 
                     await admin.messaging().send({
                         token: token,

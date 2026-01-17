@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { NavLink, useNavigate, useLocation, useMatches } from "react-router-dom";
-import { FiMenu, FiChevronLeft, FiLogOut, FiUser, FiEdit3, FiUsers } from "react-icons/fi";
+import { FiMenu, FiChevronLeft, FiLogOut, FiUser, FiEdit3, FiUsers, FiGrid } from "react-icons/fi";
 import { useAuth } from "../context/auth-context";
 
 export const Header = () => {
@@ -78,12 +78,12 @@ export const Header = () => {
 
                 {/* Backdrop */}
                 <div
-                    className={`absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 ${isMenuOpen ? 'opacity-100' : 'opacity-0'}`}
+                    className={`absolute inset-0 bg-black/60 transition-opacity duration-300 ${isMenuOpen ? 'opacity-100' : 'opacity-0'}`}
                     onClick={() => setIsMenuOpen(false)}
                 ></div>
 
                 {/* Sheet Content */}
-                <div className={`relative bg-white/90 backdrop-blur-xl rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] w-full max-w-md mx-auto transform transition-transform duration-300 ease-out ${isMenuOpen ? 'translate-y-0' : 'translate-y-full'}`}>
+                <div className={`relative bg-white rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] w-full max-w-md mx-auto transform transition-transform duration-300 ease-out ${isMenuOpen ? 'translate-y-0' : 'translate-y-full'}`}>
 
                     {/* Handle Bar */}
                     <div className="w-full flex justify-center pt-3 pb-4">
@@ -92,8 +92,13 @@ export const Header = () => {
 
                     <div className="py-2 pb-24 px-6 pt-6">
                         <MenuItem icon={FiUser} label="Profile git" onClick={() => { setIsMenuOpen(false); navigate("/"); }} />
+                        <MenuItem icon={FiGrid} label="Galeri" onClick={() => { setIsMenuOpen(false); navigate("/gallery"); }} />
                         <MenuItem icon={FiEdit3} label="Profili Düzenle" onClick={() => { setIsMenuOpen(false); navigate("/edit-profile"); }} />
                         <MenuItem icon={FiLogOut} label="Çıkış Yap" onClick={handleLogout} isRed />
+                    </div>
+
+                    <div className="absolute bottom-6 w-full text-center text-xs text-slate-300 font-['Ubuntu']">
+                        v1.2.0
                     </div>
 
                 </div>

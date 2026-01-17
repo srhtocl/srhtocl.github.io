@@ -1,0 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Mesajlar (chats) herkese açık (Anonim yazma/okuma için)
+    match /chats/{document=**} {
+      allow read, write: if true;
+    }
+
+    // 1. Admin Profil Bilgileri (Herkes görebilir, sadece Admin değiştirebilir)
+    match /admin/profile {
+      allow read: if true;
+      allow write: if request.auth.uid == "2t2Fg2aX8ePpfhsDAWoYEosDcmv1";
+    }
+
+    // 2. Admin Bildirim Tokenı (Sadece Admin okuyabilir ve yazabilir)
+    match /admin/notifications {
+      allow read, write: if request.auth.uid == "2t2Fg2aX8ePpfhsDAWoYEosDcmv1";
+    }
+
+    // Blog (post) tamamen ÖZEL (Sadece belirtilen ID okuyabilir ve yazabilir)
+    match /post/{document=**} {
+      allow read, write: if request.auth.uid == "2t2Fg2aX8ePpfhsDAWoYEosDcmv1";
+    }
+  }
+}

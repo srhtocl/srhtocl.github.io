@@ -37,21 +37,10 @@ export default function Message() {
 
             {/* Notification Permission Banner / Button */}
             {/* Show only if permission is NOT granted (default or denied) */}
-            {notificationPermission !== 'granted' && !loading && (
-                <div className="absolute top-4 right-4 z-50">
-                    <button
-                        onClick={enableNotifications}
-                        className="flex items-center gap-2 bg-white/80 backdrop-blur-md shadow-lg border border-slate-200 px-3 py-2 rounded-full text-slate-600 text-sm hover:bg-white hover:text-blue-600 transition-all animate-pulse"
-                        title="Bildirimleri Aç"
-                    >
-                        <FiBellOff size={16} />
-                        <span>Bildirimleri Aç</span>
-                    </button>
-                </div>
-            )}
+
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto z-10 w-full max-w-2xl mx-auto px-4 custom-scrollbar pb-4 pt-16">
+            <div className={`flex-1 overflow-y-auto z-10 w-full max-w-2xl mx-auto px-4 custom-scrollbar pb-4 ${user ? "pt-16" : "pt-4"}`}>
                 {loading ? (
                     <div className="flex items-center justify-center h-full">
                         <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
@@ -62,7 +51,19 @@ export default function Message() {
             </div>
 
             {/* Input Area */}
-            <div className="flex-none z-20 w-full max-w-2xl mx-auto p-4 bg-slate-50/50 backdrop-blur-md border-t border-white/50">
+            <div className="flex-none z-20 w-full max-w-2xl mx-auto p-4 bg-slate-50/50 backdrop-blur-md border-t border-white/50 relative">
+
+                {/* Notification Permission - Icon Only, Above Send Button */}
+                {notificationPermission !== 'granted' && !loading && (
+                    <button
+                        onClick={enableNotifications}
+                        className="absolute bottom-full right-6 mb-2 p-2 bg-white/80 backdrop-blur-md shadow-sm border border-slate-200 rounded-full text-slate-500 hover:text-blue-600 hover:bg-white transition-all animate-pulse"
+                        title="Bildirimleri Aç"
+                    >
+                        <FiBellOff size={18} />
+                    </button>
+                )}
+
                 <form
                     className="flex items-center gap-2 bg-white rounded-2xl shadow-lg border border-slate-200 p-2 transition-all focus-within:ring-2 focus-within:ring-slate-300/50"
                     onSubmit={handleSubmit}

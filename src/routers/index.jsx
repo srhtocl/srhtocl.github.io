@@ -14,6 +14,7 @@ const CreatePost = React.lazy(() => import("../pages/create-post"));
 
 const AllPosts = React.lazy(() => import("../pages/read-post"));
 const EditProfile = React.lazy(() => import("../pages/edit-profile"));
+const Gallery = React.lazy(() => import("../pages/gallery"));
 
 // Loading Fallback
 const LoadingScreen = () => (
@@ -77,6 +78,11 @@ const router = createHashRouter([
                         element: Loadable(AllPosts),
 
                         handle: { title: "Gönderiler" }
+                    },
+                    {
+                        path: "/gallery",
+                        element: Loadable(Gallery),
+                        handle: { title: "Galeri" }
                     },
                     {
                         path: "/edit-profile",

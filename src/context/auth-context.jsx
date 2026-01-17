@@ -1,47 +1,47 @@
+/**
+ * @file auth-context.jsx
+ * @description Uygulama genelinde kullanıcı oturum durumunu (User Session) yöneten Context.
+ * Auth verisini sağlar ve oturum açma/kapama durumlarını dinler.
+ * 
+ * @dependencies
+ * - src/services/auth-service.js (Firebase Auth işlemleri)
+ * 
+ * @date 2026-01-18
+ * @author [AI Assistant]
+ */
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
-
-import { onAuthStateChanged } from 'firebase/auth';
-
-import { signOut } from "firebase/auth";
-import { auth } from "../services/firebase";
-
+import { subscribeToAuthChanges, logoutUser } from '../services/auth-service';
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-
 	const [user, setUser] = useState(null);
-
 	const [loading, setLoading] = useState(true);
 
 	const handleLogout = async () => {
-
 		try {
-
-			await signOut(auth).then(() => {
-
-				setUser(null);
-
-				setLoading(false);
-
-				console.log("Çıkış başarılı.");
-			});
-
+			await logoutUser();
+			setUser(null);
+			// setLoading(false) gereksiz olabilir çünkü onAuthStateChanged zaten tetiklenecek
+			// ama güvenli tarafta kalmak için state update yapılabilir.
 		} catch (error) {
-
-			console.error("Çıkış yapılırken bir hata oluştu:", error);
+			console.error("Çıkış hatası:", error);
 		}
 	};
 
-	const value = { user, setUser, loading, setLoading, handleLogout };
-
 	useEffect(() => {
-		const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+		// Servis katmanından dinleyiciyi başlat
+		const unsubscribe = subscribeToAuthChanges((currentUser) => {
 			setUser(currentUser);
 			setLoading(false);
 		});
+
+		// Cleanup
 		return () => unsubscribe();
 	}, []);
+
+	const value = { user, setUser, loading, setLoading, handleLogout };
 
 	return (
 		<AuthContext.Provider value={value}>

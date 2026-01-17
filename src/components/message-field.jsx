@@ -7,11 +7,11 @@ function MessageField(props) {
             {
                 !props.messages[0] ?
 
-                    <div className="flex flex-col items-center justify-center h-full text-slate-500 opacity-70">
-                        <div className="bg-white/50 p-6 rounded-2xl shadow-sm text-center max-w-xs backdrop-blur-sm">
-                            <p className="font-['Ubuntu'] text-sm">
-                                Merhaba! Mesajlar anonim olarak iletilir ve tarama geçmişi temizlendiğinde silinir.
-                            </p>
+                    <div className="flex flex-col h-full justify-end pb-4">
+                        <div className="flex w-full justify-end">
+                            <div className="max-w-[75%] px-5 py-3 rounded-2xl shadow-md text-sm md:text-base font-['Ubuntu'] bg-slate-700 text-white rounded-tr-none animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                Merhaba.
+                            </div>
                         </div>
                     </div>
 
