@@ -2,7 +2,7 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     match /{allPaths=**} {
-      // Hem Okuma Hem Yazma: SADECE Admin (Siz)
+      // Hem Okuma Hem Yazma: SADECE Admin (Siz) - Özel Günlük
       allow read, write: if request.auth.uid == "2t2Fg2aX8ePpfhsDAWoYEosDcmv1";
     }
   }

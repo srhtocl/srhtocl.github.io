@@ -2,16 +2,25 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../context/auth-context';
 import { useNavigate, useLocation } from 'react-router';
 import { insertDocument, updateDocument } from '../services/post-methods';
+import { userConfig } from '../config/user-config';
+import { getAllCategories, ensureCategoryExists } from '../services/category-methods';
 import { FiSend, FiImage, FiX } from "react-icons/fi";
 import { storage } from '../services/firebase';
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 const CreatePost = () => {
   const [content, setContent] = useState('');
+  const [category, setCategory] = useState('');
+  const [availableCategories, setAvailableCategories] = useState([]);
+  const [filteredCategories, setFilteredCategories] = useState([]); // Filtered list for UI
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
+
   const [existingImages, setExistingImages] = useState([]); // URLs from DB
   const [newFiles, setNewFiles] = useState([]); // File objects to upload
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
+  const dropdownRef = useRef(null);
 
   const authContext = useAuth();
   const navigate = useNavigate();
@@ -19,9 +28,34 @@ const CreatePost = () => {
   const editMode = location.state?.postToEdit;
 
   useEffect(() => {
-    if (!authContext.user) { navigate("/"); }
+    // 1. Verify Authentication & Log UID
+    if (!authContext.user) {
+      navigate("/");
+      return;
+    }
+
+    console.log("Current User UID:", authContext.user.uid);
+
+    // 2. Fetch categories (only if authenticated)
+    (async () => {
+      try {
+        const cats = await getAllCategories();
+        if (cats && cats.length > 0) {
+          setAvailableCategories(cats);
+        } else {
+          console.warn("No categories found in DB, using defaults.");
+          setAvailableCategories(userConfig.defaultCategories.map(c => ({ name: c })));
+        }
+      } catch (err) {
+        console.error("Failed to load categories in component:", err);
+        // Fallback
+        setAvailableCategories(userConfig.defaultCategories.map(c => ({ name: c })));
+      }
+    })();
+
     if (editMode) {
       setContent(editMode.content);
+      setCategory(editMode.category || '');
       // Backward compatibility: If 'images' array exists use it, else if 'image_url' string exists use it.
       if (editMode.images && Array.isArray(editMode.images)) {
         setExistingImages(editMode.images);
@@ -29,7 +63,30 @@ const CreatePost = () => {
         setExistingImages([editMode.image_url]);
       }
     }
-  }, [editMode]);
+
+    // Close suggestions on outside click
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [editMode, authContext.user]);
+
+  // Filter categories when input changes
+  useEffect(() => {
+    if (category) {
+      const filtered = availableCategories.filter(cat =>
+        cat.name.toLowerCase().startsWith(category.toLowerCase())
+      );
+      setFilteredCategories(filtered);
+    } else {
+      setFilteredCategories(availableCategories);
+    }
+  }, [category, availableCategories]);
 
   const handleImageClick = () => {
     fileInputRef.current.click();
@@ -60,6 +117,11 @@ const CreatePost = () => {
     let finalImageUrls = [...existingImages];
 
     try {
+      // 0. Ensure Category Exists
+      if (category && category.trim()) {
+        await ensureCategoryExists(category.trim());
+      }
+
       // 1. Upload New Files
       if (newFiles.length > 0) {
         const uploadPromises = newFiles.map(async (file) => {
@@ -74,7 +136,7 @@ const CreatePost = () => {
       const postData = {
         content,
         images: finalImageUrls,
-        image_url: finalImageUrls.length > 0 ? finalImageUrls[0] : null, // Backward compatibility for single image view
+        category: category.trim(),
         updated_at: new Date(),
       };
 
@@ -82,10 +144,13 @@ const CreatePost = () => {
         await updateDocument(editMode.id, postData);
       } else {
         postData.timestamp = new Date();
+        postData.status = ['published']; // Default status as Array
+        // Removed like_count as requested
         await insertDocument(postData);
       }
 
       setContent('');
+      setCategory('');
       setNewFiles([]);
       setExistingImages([]);
       navigate('/posts');
@@ -125,82 +190,125 @@ const CreatePost = () => {
           </div>
 
           {/* 2. Body Area (Input) */}
-          <div className="p-4 bg-slate-50/30">
-            <textarea
-              placeholder="Ne düşünüyorsun?"
-              className="w-full h-32 bg-transparent border-none text-slate-700 placeholder-slate-400 outline-none resize-none font-['Ubuntu'] text-lg"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              disabled={uploading}
-            />
+          <div className="bg-slate-50/30">
 
-            {/* Image Preview Strip (Max Height 56px) */}
-            {(existingImages.length > 0 || newFiles.length > 0) && (
-              <div className="mt-2 flex items-center gap-2 overflow-x-auto h-[56px] py-1 px-1 scrollbar-hide">
+            {/* Custom Category Selector */}
+            <div className="relative px-4 py-3 border-b border-slate-100/50" ref={dropdownRef}>
+              <input
+                type="text"
+                placeholder="Bir kategori seçin veya yeni yazın..."
+                className="w-full bg-transparent text-sm text-slate-700 font-medium placeholder-slate-400 outline-none"
+                value={category}
+                onChange={(e) => {
+                  setCategory(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => setShowSuggestions(true)}
+              />
 
-                {/* Existing Images */}
-                {existingImages.map((url, index) => (
-                  <div key={`existing-${index}`} className="relative flex-shrink-0 w-10 h-10 rounded-md overflow-hidden group border border-slate-200">
-                    <img src={url} alt="existing" className="w-full h-full object-cover" />
-                    <button
-                      onClick={() => removeExistingImage(url)}
-                      className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white"
-                    >
-                      <FiX size={14} />
-                    </button>
-                  </div>
-                ))}
+              {/* Custom Autocomplete Dropdown */}
+              {showSuggestions && (category || filteredCategories.length > 0) && (
+                <div className="absolute left-0 right-0 top-full bg-white border-b border-slate-200 shadow-lg rounded-b-xl z-30 max-h-48 overflow-y-auto custom-scrollbar animate-in fade-in zoom-in-95 duration-150">
+                  {filteredCategories.length > 0 ? (
+                    filteredCategories.map((cat, index) => (
+                      <button
+                        key={index}
+                        onClick={() => {
+                          setCategory(cat.name);
+                          setShowSuggestions(false);
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center justify-between group"
+                      >
+                        <span>{cat.name}</span>
+                        {/* Optional: Add icon or visual cue */}
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-4 py-3 text-xs text-slate-400 italic">
+                      "{category}" yeni kategori olarak eklenecek.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
-                {/* New Files */}
-                {newFiles.map((file, index) => (
-                  <div key={`new-${index}`} className="relative flex-shrink-0 w-10 h-10 rounded-md overflow-hidden group border border-blue-200 ring-1 ring-blue-100">
-                    <img src={URL.createObjectURL(file)} alt="preview" className="w-full h-full object-cover" onLoad={(e) => URL.revokeObjectURL(e.target.src)} />
-                    <button
-                      onClick={() => removeNewFile(index)}
-                      className="absolute inset-0 bg-blue-500/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white"
-                    >
-                      <FiX size={14} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+            <div className="p-4">
+              <textarea
+                placeholder="Ne düşünüyorsun?"
+                className="w-full h-32 bg-transparent border-none text-slate-700 placeholder-slate-400 outline-none resize-none font-['Ubuntu'] text-lg"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                disabled={uploading}
+              />
 
-            {/* Hidden File Input */}
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              accept="image/*"
-              multiple
-              className="hidden"
-            />
-          </div>
+              {/* Image Preview Strip (Max Height 56px) */}
+              {(existingImages.length > 0 || newFiles.length > 0) && (
+                <div className="mt-2 flex items-center gap-2 overflow-x-auto h-[56px] py-1 px-1 scrollbar-hide">
 
-          {/* 3. Footer Area (Actions) */}
-          <div className="bg-slate-100/50 px-4 py-3 flex justify-between items-center border-t border-slate-100">
-            <button
-              onClick={handleImageClick}
-              className={`transition-colors p-2 rounded-full hover:bg-slate-200/50 ${newFiles.length > 0 || existingImages.length > 0 ? 'text-blue-600 bg-blue-50' : 'text-slate-400 hover:text-slate-600'}`}
-              title="Resim Ekle"
-              disabled={uploading}
-            >
-              <FiImage size={24} />
-            </button>
+                  {/* Existing Images */}
+                  {existingImages.map((url, index) => (
+                    <div key={`existing-${index}`} className="relative flex-shrink-0 w-10 h-10 rounded-md overflow-hidden group border border-slate-200">
+                      <img src={url} alt="existing" className="w-full h-full object-cover" />
+                      <button
+                        onClick={() => removeExistingImage(url)}
+                        className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white"
+                      >
+                        <FiX size={14} />
+                      </button>
+                    </div>
+                  ))}
 
-            <button
-              onClick={handleSave}
-              disabled={(!content.trim() && existingImages.length === 0 && newFiles.length === 0) || uploading}
-              className={`transform transition-all duration-200 ${content.trim() || existingImages.length > 0 || newFiles.length > 0 ? 'text-blue-600 hover:scale-110' : 'text-slate-300'}`}
-            >
-              <FiSend size={24} className={uploading ? "animate-pulse" : ""} />
-            </button>
+                  {/* New Files */}
+                  {newFiles.map((file, index) => (
+                    <div key={`new-${index}`} className="relative flex-shrink-0 w-10 h-10 rounded-md overflow-hidden group border border-blue-200 ring-1 ring-blue-100">
+                      <img src={URL.createObjectURL(file)} alt="preview" className="w-full h-full object-cover" onLoad={(e) => URL.revokeObjectURL(e.target.src)} />
+                      <button
+                        onClick={() => removeNewFile(index)}
+                        className="absolute inset-0 bg-blue-500/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white"
+                      >
+                        <FiX size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Hidden File Input */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept="image/*"
+                multiple
+                className="hidden"
+              />
+            </div>
+
+            {/* 3. Footer Area (Actions) */}
+            <div className="bg-slate-100/50 px-4 py-3 flex justify-between items-center border-t border-slate-100">
+              <button
+                onClick={handleImageClick}
+                className={`transition-colors p-2 rounded-full hover:bg-slate-200/50 ${newFiles.length > 0 || existingImages.length > 0 ? 'text-blue-600 bg-blue-50' : 'text-slate-400 hover:text-slate-600'}`}
+                title="Resim Ekle"
+                disabled={uploading}
+              >
+                <FiImage size={24} />
+              </button>
+
+              <button
+                onClick={handleSave}
+                disabled={(!content.trim() && existingImages.length === 0 && newFiles.length === 0) || uploading}
+                className={`transform transition-all duration-200 ${content.trim() || existingImages.length > 0 || newFiles.length > 0 ? 'text-blue-600 hover:scale-110' : 'text-slate-300'}`}
+              >
+                <FiSend size={24} className={uploading ? "animate-pulse" : ""} />
+              </button>
+            </div>
+
           </div>
 
         </div>
 
       </div>
-
     </div>
   );
 };

@@ -18,8 +18,13 @@ service cloud.firestore {
       allow read, write: if request.auth.uid == "2t2Fg2aX8ePpfhsDAWoYEosDcmv1";
     }
 
-    // Blog (post) tamamen ÖZEL (Sadece belirtilen ID okuyabilir ve yazabilir)
+    // Blog (post) tamamen ÖZEL
     match /post/{document=**} {
+      allow read, write: if request.auth.uid == "2t2Fg2aX8ePpfhsDAWoYEosDcmv1";
+    }
+
+    // Kategoriler (categories) tamamen ÖZEL (Sadece Admin)
+    match /categories/{document=**} {
       allow read, write: if request.auth.uid == "2t2Fg2aX8ePpfhsDAWoYEosDcmv1";
     }
   }

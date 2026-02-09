@@ -7,14 +7,15 @@ import { getMessaging } from "firebase/messaging";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
-	apiKey: "AIzaSyDR5xawb8aPCfHKWsO6uPBcOWIykKJGc-4",
-	authDomain: "srhtocl-4b648.firebaseapp.com",
-	databaseURL: "https://srhtocl-4b648-default-rtdb.firebaseio.com",
-	projectId: "srhtocl-4b648",
-	storageBucket: "srhtocl-4b648.firebasestorage.app",
-	messagingSenderId: "534732316547",
-	appId: "1:534732316547:web:8e718044490a9b1793a0b6",
-	measurementId: "G-TZZCX1VMP7"
+    // @ai-guard: DO NOT HARDCODE. Use environment variables for security.
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase
@@ -32,6 +33,9 @@ const collectionRef = collection(db, "chats");
 // Get a reference to the message collection
 const postCollectionRef = collection(db, "post");
 
+// Get a reference to the categories collection
+const categoryCollectionRef = collection(db, "categories");
+
 // Initialize Messaging
 const messaging = getMessaging(app);
 
@@ -39,11 +43,12 @@ const messaging = getMessaging(app);
 const storage = getStorage(app);
 
 export {
-	app, // firebase app
-	auth, // firebase auth
-	db, // firestore database
-	messaging, // firebase messaging
-	storage, // firebase storage
-	collectionRef, // message collection references
-	postCollectionRef // post collection references
+    app, // firebase app
+    auth, // firebase auth
+    db, // firestore database
+    messaging, // firebase messaging
+    storage, // firebase storage
+    collectionRef, // message collection references
+    postCollectionRef, // post collection references
+    categoryCollectionRef // category collection references
 };

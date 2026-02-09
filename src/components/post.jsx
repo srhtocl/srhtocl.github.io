@@ -18,8 +18,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
-import { FiMoreVertical, FiEdit2, FiTrash2, FiLink } from 'react-icons/fi';
-import { deleteDocument } from '../services/post-methods';
+import { FiMoreVertical, FiEdit2, FiTrash2, FiLink, FiCopy, FiArchive } from 'react-icons/fi';
+import { deleteDocument, updatePostStatus } from '../services/post-methods';
 import { useAuth } from '../context/auth-context';
 import PostImages from './post-images';
 
@@ -58,11 +58,13 @@ const Post = ({ post, onDelete }) => {
           </div>
           <div className="flex flex-col">
             <h3 className="text-slate-800 font-bold text-sm font-['Ubuntu']">Serhat Öcal</h3>
-            <span className="text-slate-400 text-xs font-['Ubuntu']">
-              {post.timestamp?.seconds
-                ? new Date(post.timestamp.seconds * 1000).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
-                : 'Tarih yok'}
-            </span>
+            <div className="flex items-center gap-2 text-xs font-['Ubuntu']">
+              <span className="text-slate-400">
+                {post.timestamp?.seconds
+                  ? new Date(post.timestamp.seconds * 1000).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+                  : 'Tarih yok'}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -80,6 +82,31 @@ const Post = ({ post, onDelete }) => {
                   className="w-full text-left px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2"
                 >
                   <FiEdit2 size={14} /> Düzenle
+                </button>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(post.content);
+                    setShowMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2"
+                >
+                  <FiCopy size={14} /> Kopyala
+                </button>
+                <button
+                  onClick={async () => {
+                    if (window.confirm("Bu gönderiyi arşivlemek istediğinize emin misiniz? Ana sayfada görünmeyecek.")) {
+                      const success = await updatePostStatus(post.id, ['archived']);
+                      if (success) {
+                        if (onDelete) onDelete(post.id); // UI'dan kaldırmak için onDelete'i kullanabiliriz (yoksa sayfayı yenilemek gerekir)
+                      } else {
+                        alert("Arşivleme başarısız.");
+                      }
+                    }
+                    setShowMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2"
+                >
+                  <FiArchive size={14} /> Arşivle
                 </button>
                 <button
                   onClick={handleDelete}
@@ -109,12 +136,22 @@ const Post = ({ post, onDelete }) => {
       </div>
 
       {/* 3. Footer Area (Visual Actions) */}
-      <div className="bg-slate-100/50 px-4 py-3 flex items-center gap-4 border-t border-slate-100 min-h-[3.5rem]">
+      <div className="bg-slate-100/50 px-4 py-3 flex justify-between items-center border-t border-slate-100 min-h-[3.5rem]">
 
         {/* Only Link Button Remains */}
         <button className="flex items-center gap-2 text-slate-400 hover:text-blue-500 transition-colors group" title="Bağlantı (Yakında)">
           <FiLink size={20} className="group-hover:scale-110 transition-transform" />
         </button>
+
+        {post.category && (
+          <button
+            onClick={() => navigate(`/posts?category=${encodeURIComponent(post.category)}`)}
+            className="bg-white text-slate-500 px-3 py-1 text-sm rounded-md border border-slate-200 font-medium shadow-sm hover:bg-slate-50 transition-colors"
+          >
+            {post.category}
+          </button>
+        )}
+
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { postCollectionRef } from "./firebase";
 
-import { doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs, query, orderBy, limit, startAfter } from "firebase/firestore";
+import { doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs, query, orderBy, limit, startAfter, where } from "firebase/firestore";
 
 
 
@@ -47,15 +47,24 @@ async function getAllDocumentsIds() {
     }
 }
 
-async function getPaginatedPosts(lastVisible = null, limitCount = 10) {
+async function getPaginatedPosts(lastVisible = null, limitCount = 10, category = null) {
     let response = { posts: [], lastVisible: null };
 
     try {
         let q;
-        if (lastVisible) {
-            q = query(postCollectionRef, orderBy("timestamp", "desc"), startAfter(lastVisible), limit(limitCount));
+        if (category) {
+            // NOTE: This requires a composite index on [category, timestamp] in Firestore
+            if (lastVisible) {
+                q = query(postCollectionRef, where("category", "==", category), orderBy("timestamp", "desc"), startAfter(lastVisible), limit(limitCount));
+            } else {
+                q = query(postCollectionRef, where("category", "==", category), orderBy("timestamp", "desc"), limit(limitCount));
+            }
         } else {
-            q = query(postCollectionRef, orderBy("timestamp", "desc"), limit(limitCount));
+            if (lastVisible) {
+                q = query(postCollectionRef, orderBy("timestamp", "desc"), startAfter(lastVisible), limit(limitCount));
+            } else {
+                q = query(postCollectionRef, orderBy("timestamp", "desc"), limit(limitCount));
+            }
         }
 
         const querySnapshot = await getDocs(q);
@@ -63,7 +72,13 @@ async function getPaginatedPosts(lastVisible = null, limitCount = 10) {
 
         const posts = [];
         querySnapshot.forEach((doc) => {
-            posts.push({ ...doc.data(), id: doc.id });
+            const data = doc.data();
+            // Client-side filtering for Archive Feature (Array support)
+            // If status is missing OR it includes 'published', show it.
+            // Old posts (no status) => Show. New posts (['published']) => Show. Archived (['archived']) => Hide.
+            if (!data.status || (Array.isArray(data.status) && data.status.includes('published'))) {
+                 posts.push({ ...data, id: doc.id });
+            }
         });
 
         response = { posts, lastVisible: lastVisibleDoc };
@@ -159,6 +174,17 @@ async function getDocumentById(docId) {
     } finally { return response; }
 }
 
+async function updatePostStatus(docId, status) {
+    try {
+        const docRef = doc(postCollectionRef, docId);
+        await updateDoc(docRef, { status: status });
+        return true;
+    } catch (error) {
+        console.error("Error updating status:", error);
+        return false;
+    }
+}
+
 export {
 
     getDocumentById, // get a document from post collection
@@ -172,6 +198,8 @@ export {
     insertDocument, // insert a document to post collection
 
     updateDocument, // update a document in post collection
+    
+    updatePostStatus, // update post status
 
     deleteDocument, // delete a document from post collection
 

@@ -15,7 +15,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../services/firebase";
-import { FiSend, FiX } from "react-icons/fi";
+import { FiMessageSquare, FiX } from "react-icons/fi";
 
 export default function Home() {
     const [profile, setProfile] = useState({
@@ -86,7 +86,7 @@ export default function Home() {
                             className="flex items-center justify-center w-12 h-12 bg-white text-slate-800 border border-slate-200 rounded-xl shadow-md hover:bg-slate-50 transition-all active:scale-95"
                             aria-label="Mesaj Gönder"
                         >
-                            <FiSend size={20} className="translate-x-0.5" />
+                            <FiMessageSquare size={20} />
                         </Link>
                     </div>
                 </div>
