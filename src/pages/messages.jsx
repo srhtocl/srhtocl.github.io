@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { deleteDocument, subscribeToAllMessages } from "../services/db-methods";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/auth-context";
-import { FiMessageSquare, FiTrash2, FiBellOff } from "react-icons/fi";
+import { FiMessageSquare, FiTrash2, FiBellOff, FiMonitor, FiSmartphone, FiTablet, FiGlobe } from "react-icons/fi";
 import { requestForToken, sendNotification } from "../services/notification";
 import toast from "react-hot-toast";
 
@@ -95,7 +95,7 @@ function AllMessage() {
 
             {/* Notification Permission Banner / Button */}
             {notificationPermission !== 'granted' && (
-                <div className="absolute top-4 right-4 z-50">
+                <div className="absolute top-4 left-4 z-50">
                     <button
                         onClick={handleEnableNotifications}
                         className="flex items-center gap-2 bg-white/80 backdrop-blur-md shadow-lg border border-slate-200 px-3 py-2 rounded-full text-slate-600 text-sm hover:bg-white hover:text-blue-600 transition-all animate-pulse"
@@ -124,10 +124,32 @@ function AllMessage() {
                                     className="group block bg-white/80 backdrop-blur-md border border-slate-100/50 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all active:scale-98"
                                 >
                                     {/* Card Header: User & Delete Action */}
-                                    <div className="bg-slate-50/80 px-4 py-2 flex justify-between items-center border-b border-slate-100/50">
-                                        <h3 className="text-slate-800 font-bold font-['Ubuntu'] text-sm truncate">
-                                            {message.user}
-                                        </h3>
+                                    <div className="bg-slate-50/80 px-4 py-2 flex justify-between items-start border-b border-slate-100/50">
+                                        <div className="flex flex-col truncate pr-2">
+                                            <h3 className="text-slate-800 font-bold font-['Ubuntu'] text-sm truncate">
+                                                {message.user}
+                                            </h3>
+                                            {message.metadata && (
+                                                <div className="flex gap-2 text-[10px] text-slate-500 mt-1.5 font-['Ubuntu'] flex-wrap">
+                                                    {message.metadata.os && (
+                                                        <span className="flex items-center gap-1 bg-slate-100/80 px-2 py-0.5 rounded-full text-slate-600 border border-slate-200/50" title="İşletim Sistemi">
+                                                            <FiMonitor size={10} /> {message.metadata.os}
+                                                        </span>
+                                                    )}
+                                                    {message.metadata.browser && (
+                                                        <span className="flex items-center gap-1 bg-slate-100/80 px-2 py-0.5 rounded-full text-slate-600 border border-slate-200/50" title="Tarayıcı">
+                                                            <FiGlobe size={10} /> {message.metadata.browser}
+                                                        </span>
+                                                    )}
+                                                    {message.metadata.deviceType && (
+                                                        <span className="flex items-center gap-1 bg-slate-100/80 px-2 py-0.5 rounded-full text-slate-600 border border-slate-200/50" title="Cihaz Türü">
+                                                            {message.metadata.deviceType === "Mobil" ? <FiSmartphone size={10} /> : message.metadata.deviceType === "Tablet" ? <FiTablet size={10} /> : <FiMonitor size={10} />} 
+                                                            {message.metadata.deviceType}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
 
                                         <button
                                             onClick={(e) => handleDelete(e, message.docId)}

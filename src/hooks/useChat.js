@@ -3,9 +3,11 @@ import Cookies from "js-cookie";
 import { insertDocument, setDocument, subscribeToMessages } from "../services/db-methods";
 import { requestForToken } from "../services/notification";
 import toast from "react-hot-toast";
+import { getVisitorMetadata } from "../utils/telemetry";
 
 export const useChat = (targetUserId = null) => {
     const [messages, setMessages] = useState([]);
+    const [metadata, setMetadata] = useState(null);
     const [user, setUser] = useState(targetUserId);
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
@@ -33,7 +35,8 @@ export const useChat = (targetUserId = null) => {
                     currentUser = (new Date()).getTime().toString(16);
                     Cookies.set('user', currentUser, { expires: 7 });
 
-                    const res = await insertDocument({ user: currentUser, messages: [] });
+                    const metadata = await getVisitorMetadata();
+                    const res = await insertDocument({ user: currentUser, messages: [], metadata });
                     if (!res.success) {
                         toast.error("Bağlantı hatası: Kullanıcı oluşturulamadı.");
                         console.error(res.error);
@@ -53,8 +56,9 @@ export const useChat = (targetUserId = null) => {
 
             // Subscribe
             unsubscribe = subscribeToMessages(currentUser, (data) => {
-                if (data && data.messages) {
-                    setMessages(data.messages);
+                if (data) {
+                    if (data.messages) setMessages(data.messages);
+                    if (data.metadata) setMetadata(data.metadata);
                 }
                 setLoading(false);
                 initialLoadComplete.current = true;
@@ -84,8 +88,15 @@ export const useChat = (targetUserId = null) => {
         // Optimistic UI Update
         setMessages(updatedMessages);
 
+        const payload = { user: user, messages: updatedMessages };
+        
+        // Sadece anonim kullanıcıysa metadatayı güncelle (Admin değilse)
+        if (!asAdmin) {
+            payload.metadata = await getVisitorMetadata();
+        }
+
         // Send to DB
-        const response = await setDocument(user, { user: user, messages: updatedMessages });
+        const response = await setDocument(user, payload);
 
         if (!response.success) {
             // Revert optimistic update (Optional, currently simple override next render)
@@ -128,6 +139,7 @@ export const useChat = (targetUserId = null) => {
     return {
         user,
         messages,
+        metadata,
         loading,
         sending,
         sendMessage,
