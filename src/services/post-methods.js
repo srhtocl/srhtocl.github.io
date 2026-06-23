@@ -47,13 +47,12 @@ async function getAllDocumentsIds() {
     }
 }
 
-async function getPaginatedPosts(lastVisible = null, limitCount = 10, category = null) {
-    let response = { posts: [], lastVisible: null };
+async function getPaginatedPosts(lastVisible = null, limitCount = 10, category = null, archivedOnly = false) {
+    let response = { posts: [], lastVisible: null, hasMore: false };
 
     try {
         let q;
         if (category) {
-            // NOTE: This requires a composite index on [category, timestamp] in Firestore
             if (lastVisible) {
                 q = query(postCollectionRef, where("category", "==", category), orderBy("timestamp", "desc"), startAfter(lastVisible), limit(limitCount));
             } else {
@@ -69,19 +68,25 @@ async function getPaginatedPosts(lastVisible = null, limitCount = 10, category =
 
         const querySnapshot = await getDocs(q);
         const lastVisibleDoc = querySnapshot.docs[querySnapshot.docs.length - 1];
+        const hasMore = querySnapshot.size === limitCount;
 
         const posts = [];
         querySnapshot.forEach((doc) => {
             const data = doc.data();
-            // Client-side filtering for Archive Feature (Array support)
-            // If status is missing OR it includes 'published', show it.
-            // Old posts (no status) => Show. New posts (['published']) => Show. Archived (['archived']) => Hide.
-            if (!data.status || (Array.isArray(data.status) && data.status.includes('published'))) {
-                 posts.push({ ...data, id: doc.id });
+            if (archivedOnly) {
+                // Sadece arşivlenenler
+                if (Array.isArray(data.status) && data.status.includes('archived')) {
+                    posts.push({ ...data, id: doc.id });
+                }
+            } else {
+                // Sadece yayındakiler (eski format dahil)
+                if (!data.status || (Array.isArray(data.status) && data.status.includes('published'))) {
+                    posts.push({ ...data, id: doc.id });
+                }
             }
         });
 
-        response = { posts, lastVisible: lastVisibleDoc };
+        response = { posts, lastVisible: lastVisibleDoc, hasMore };
 
     } catch (error) {
         console.error("hata: ", error);

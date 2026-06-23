@@ -49,4 +49,35 @@
         -ms-overflow-style: none; /* IE and Edge */
         scrollbar-width: none; /* Firefox */
     }
+
+    /* Indeterminate progress bar (yükleme çubuğu) */
+    @keyframes indeterminate {
+        0% {
+            left: -40%;
+            width: 40%;
+        }
+        50% {
+            left: 30%;
+            width: 60%;
+        }
+        100% {
+            left: 100%;
+            width: 40%;
+        }
+    }
+
+    .progress-bar-indeterminate {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .progress-bar-indeterminate::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        height: 100%;
+        background-color: #334155; /* slate-700 */
+        border-radius: 9999px;
+        animation: indeterminate 1.4s ease-in-out infinite;
+    }
 }

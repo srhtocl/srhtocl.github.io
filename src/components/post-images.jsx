@@ -38,7 +38,16 @@ const PostImages = ({ images, content }) => {
     const validImages = images.map((url, index) => ({ url, originalIndex: index }))
         .filter(item => !failedImages[item.originalIndex]);
 
-    if (validImages.length === 0) return null;
+    if (validImages.length === 0) {
+        if (content) {
+            return (
+                <p className="text-slate-700 font-['Ubuntu'] text-lg leading-relaxed whitespace-pre-wrap">
+                    {content}
+                </p>
+            );
+        }
+        return null;
+    }
 
     return (
         <div className="relative w-full rounded-lg overflow-hidden group/image">
@@ -55,21 +64,21 @@ const PostImages = ({ images, content }) => {
                 }}
             >
                 {validImages.map((imageItem, idx) => (
-                    <div key={imageItem.originalIndex} className="w-full flex-shrink-0 snap-center relative h-[500px] flex items-center justify-center bg-slate-100 overflow-hidden">
+                    <div key={imageItem.originalIndex} className="w-full flex-shrink-0 snap-center relative aspect-video overflow-hidden">
 
-                        {/* Layer 1: Blurred Background (Fills the gaps) */}
+                        {/* Layer 1: Blurred Background */}
                         <img
                             src={imageItem.url}
                             alt=""
-                            className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-50 scale-110"
+                            className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-60 scale-110"
                             onError={() => handleImageError(imageItem.originalIndex)}
                         />
 
-                        {/* Layer 2: Main Image (Centered & Uncropped) */}
+                        {/* Layer 2: Main Image (Fills container, 16:9) */}
                         <img
                             src={imageItem.url}
                             alt={`slide-${idx}`}
-                            className="relative w-full h-full object-contain z-10 drop-shadow-md transition-transform duration-300"
+                            className="absolute inset-0 w-full h-full object-cover z-10 transition-transform duration-300"
                             loading="lazy"
                             onError={() => handleImageError(imageItem.originalIndex)}
                         />

@@ -92,6 +92,7 @@ export const useProfile = () => {
 
             // 1. Yeni resim varsa Storage'a yükle
             if (imageFile) {
+                if (user) console.log(`[DEBUG] Uploading as UID: ${user.uid}`);
                 const storageRef = ref(storage, `profile/admin_profile_${Date.now()}`);
                 const snapshot = await uploadBytes(storageRef, imageFile);
                 finalPhotoURL = await getDownloadURL(snapshot.ref);

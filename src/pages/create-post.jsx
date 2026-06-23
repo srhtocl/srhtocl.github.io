@@ -178,13 +178,13 @@ const CreatePost = () => {
           <div className="bg-slate-100/50 px-4 py-3 flex items-center gap-3 border-b border-slate-100">
             <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden">
               <img
-                src="https://pbs.twimg.com/profile_images/1483105275766882304/4CYpr2hO_400x400.jpg"
-                alt="Profile"
+                src={userConfig.avatarUrl}
+                alt={userConfig.displayName}
                 className="w-full h-full object-cover"
               />
             </div>
             <div className="flex flex-col">
-              <span className="text-slate-700 font-bold text-sm font-['Ubuntu']">Serhat Öcal</span>
+              <span className="text-slate-700 font-bold text-sm font-['Ubuntu']">{userConfig.displayName}</span>
               <span className="text-slate-400 text-xs">{new Date().toLocaleDateString('tr-TR')}</span>
             </div>
           </div>
@@ -262,12 +262,19 @@ const CreatePost = () => {
                   {newFiles.map((file, index) => (
                     <div key={`new-${index}`} className="relative flex-shrink-0 w-10 h-10 rounded-md overflow-hidden group border border-blue-200 ring-1 ring-blue-100">
                       <img src={URL.createObjectURL(file)} alt="preview" className="w-full h-full object-cover" onLoad={(e) => URL.revokeObjectURL(e.target.src)} />
-                      <button
-                        onClick={() => removeNewFile(index)}
-                        className="absolute inset-0 bg-blue-500/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white"
-                      >
-                        <FiX size={14} />
-                      </button>
+                      {/* Yükleme sırasında spinner overlay */}
+                      {uploading ? (
+                        <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
+                          <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin" />
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => removeNewFile(index)}
+                          className="absolute inset-0 bg-blue-500/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white"
+                        >
+                          <FiX size={14} />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -285,24 +292,38 @@ const CreatePost = () => {
             </div>
 
             {/* 3. Footer Area (Actions) */}
-            <div className="bg-slate-100/50 px-4 py-3 flex justify-between items-center border-t border-slate-100">
-              <button
-                onClick={handleImageClick}
-                className={`transition-colors p-2 rounded-full hover:bg-slate-200/50 ${newFiles.length > 0 || existingImages.length > 0 ? 'text-blue-600 bg-blue-50' : 'text-slate-400 hover:text-slate-600'}`}
-                title="Resim Ekle"
-                disabled={uploading}
-              >
-                <FiImage size={24} />
-              </button>
+            {uploading ? (
+              /* ── Yükleme Durumu ── */
+              <div className="bg-slate-100/50 px-4 py-3 border-t border-slate-100 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-500 font-['Ubuntu'] font-medium animate-pulse">
+                    {newFiles.length > 0 ? `${newFiles.length} görsel yükleniyor...` : 'Kaydediliyor...'}
+                  </span>
+                  <span className="text-xs text-slate-400 font-['Ubuntu']">Lütfen bekleyin</span>
+                </div>
+                {/* Progress Bar */}
+                <div className="w-full h-1 bg-slate-200 rounded-full progress-bar-indeterminate" />
+              </div>
+            ) : (
+              /* ── Normal Durum ── */
+              <div className="bg-slate-100/50 px-4 py-3 flex justify-between items-center border-t border-slate-100">
+                <button
+                  onClick={handleImageClick}
+                  className={`transition-colors p-2 rounded-full hover:bg-slate-200/50 ${newFiles.length > 0 || existingImages.length > 0 ? 'text-blue-600 bg-blue-50' : 'text-slate-400 hover:text-slate-600'}`}
+                  title="Resim Ekle"
+                >
+                  <FiImage size={24} />
+                </button>
 
-              <button
-                onClick={handleSave}
-                disabled={(!content.trim() && existingImages.length === 0 && newFiles.length === 0) || uploading}
-                className={`transform transition-all duration-200 ${content.trim() || existingImages.length > 0 || newFiles.length > 0 ? 'text-blue-600 hover:scale-110' : 'text-slate-300'}`}
-              >
-                <FiSend size={24} className={uploading ? "animate-pulse" : ""} />
-              </button>
-            </div>
+                <button
+                  onClick={handleSave}
+                  disabled={!content.trim() && existingImages.length === 0 && newFiles.length === 0}
+                  className={`transform transition-all duration-200 active:scale-90 ${content.trim() || existingImages.length > 0 || newFiles.length > 0 ? 'text-blue-600 hover:scale-110' : 'text-slate-300'}`}
+                >
+                  <FiSend size={24} />
+                </button>
+              </div>
+            )}
 
           </div>
 

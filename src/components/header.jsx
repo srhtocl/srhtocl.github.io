@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { NavLink, useNavigate, useLocation, useMatches } from "react-router-dom";
-import { FiMenu, FiChevronLeft, FiLogOut, FiUser, FiEdit3, FiUsers, FiGrid } from "react-icons/fi";
+import { FiMenu, FiChevronLeft, FiLogOut, FiUser, FiEdit3, FiUsers, FiGrid, FiTag, FiArchive } from "react-icons/fi";
 import { useAuth } from "../context/auth-context";
 
 export const Header = () => {
@@ -94,6 +94,8 @@ export const Header = () => {
                         <MenuItem icon={FiUser} label="Profile git" onClick={() => { setIsMenuOpen(false); navigate("/"); }} />
                         <MenuItem icon={FiGrid} label="Galeri" onClick={() => { setIsMenuOpen(false); navigate("/gallery"); }} />
                         <MenuItem icon={FiEdit3} label="Profili Düzenle" onClick={() => { setIsMenuOpen(false); navigate("/edit-profile"); }} />
+                        <MenuItem icon={FiTag} label="Kategorileri Yönet" onClick={() => { setIsMenuOpen(false); navigate("/manage-categories"); }} />
+                        <MenuItem icon={FiArchive} label="Arşiv" onClick={() => { setIsMenuOpen(false); navigate("/archive"); }} />
                         <MenuItem icon={FiLogOut} label="Çıkış Yap" onClick={handleLogout} isRed />
                     </div>
 

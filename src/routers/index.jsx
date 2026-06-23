@@ -15,6 +15,8 @@ const CreatePost = React.lazy(() => import("../pages/create-post"));
 const AllPosts = React.lazy(() => import("../pages/read-post"));
 const EditProfile = React.lazy(() => import("../pages/edit-profile"));
 const Gallery = React.lazy(() => import("../pages/gallery"));
+const ManageCategories = React.lazy(() => import("../pages/manage-categories"));
+const Archive = React.lazy(() => import("../pages/archive"));
 
 // Loading Fallback
 const LoadingScreen = () => (
@@ -88,6 +90,16 @@ const router = createHashRouter([
                         path: "/edit-profile",
                         element: Loadable(EditProfile),
                         handle: { title: "Profili Düzenle" }
+                    },
+                    {
+                        path: "/manage-categories",
+                        element: Loadable(ManageCategories),
+                        handle: { title: "Kategorileri Yönet" }
+                    },
+                    {
+                        path: "/archive",
+                        element: Loadable(Archive),
+                        handle: { title: "Arşiv" }
                     }
                 ]
             }

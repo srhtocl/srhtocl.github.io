@@ -16,11 +16,12 @@ import { Link } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../services/firebase";
 import { FiMessageSquare, FiX } from "react-icons/fi";
+import { userConfig } from "../config/user-config";
 
 export default function Home() {
     const [profile, setProfile] = useState({
-        photoURL: "https://pbs.twimg.com/profile_images/1483105275766882304/4CYpr2hO_400x400.jpg",
-        bio: "bir-iki kelime bile sessizlikten iyidir."
+        photoURL: userConfig.avatarUrl,
+        bio: userConfig.bio
     });
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
@@ -62,7 +63,7 @@ export default function Home() {
                         <img
                             className="w-full h-full rounded-full object-cover grayscale transition-all duration-500 group-hover:grayscale-0"
                             src={profile.photoURL}
-                            alt="Serhat Öcal"
+                            alt={userConfig.displayName}
                         />
                     </div>
                 </div>

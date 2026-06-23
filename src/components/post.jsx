@@ -22,8 +22,9 @@ import { FiMoreVertical, FiEdit2, FiTrash2, FiLink, FiCopy, FiArchive } from 're
 import { deleteDocument, updatePostStatus } from '../services/post-methods';
 import { useAuth } from '../context/auth-context';
 import PostImages from './post-images';
+import { userConfig } from '../config/user-config';
 
-const Post = ({ post, onDelete }) => {
+const Post = ({ post, onDelete, onUnarchive }) => {
   const [showMenu, setShowMenu] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -51,13 +52,13 @@ const Post = ({ post, onDelete }) => {
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden ring-2 ring-slate-50">
             <img
-              src="https://pbs.twimg.com/profile_images/1483105275766882304/4CYpr2hO_400x400.jpg"
-              alt="Profile"
+              src={userConfig.avatarUrl}
+              alt={userConfig.displayName}
               className="w-full h-full object-cover"
             />
           </div>
           <div className="flex flex-col">
-            <h3 className="text-slate-800 font-bold text-sm font-['Ubuntu']">Serhat Öcal</h3>
+            <h3 className="text-slate-800 font-bold text-sm font-['Ubuntu']">{userConfig.displayName}</h3>
             <div className="flex items-center gap-2 text-xs font-['Ubuntu']">
               <span className="text-slate-400">
                 {post.timestamp?.seconds
@@ -94,19 +95,25 @@ const Post = ({ post, onDelete }) => {
                 </button>
                 <button
                   onClick={async () => {
-                    if (window.confirm("Bu gönderiyi arşivlemek istediğinize emin misiniz? Ana sayfada görünmeyecek.")) {
-                      const success = await updatePostStatus(post.id, ['archived']);
-                      if (success) {
-                        if (onDelete) onDelete(post.id); // UI'dan kaldırmak için onDelete'i kullanabiliriz (yoksa sayfayı yenilemek gerekir)
-                      } else {
-                        alert("Arşivleme başarısız.");
+                    if (onUnarchive) {
+                      // Arşiv sayfasında: yayına al
+                      onUnarchive(post.id);
+                    } else {
+                      // Normal sayfada: arşivle
+                      if (window.confirm("Bu gönderiyi arşivlemek istediğinize emin misiniz? Ana sayfada görünmeyecek.")) {
+                        const success = await updatePostStatus(post.id, ['archived']);
+                        if (success) {
+                          if (onDelete) onDelete(post.id);
+                        } else {
+                          alert("Arşivleme başarısız.");
+                        }
                       }
                     }
                     setShowMenu(false);
                   }}
                   className="w-full text-left px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2"
                 >
-                  <FiArchive size={14} /> Arşivle
+                  <FiArchive size={14} /> {onUnarchive ? 'Yayına al' : 'Arşivle'}
                 </button>
                 <button
                   onClick={handleDelete}
@@ -170,6 +177,7 @@ Post.propTypes = {
     }),
   }).isRequired,
   onDelete: PropTypes.func,
+  onUnarchive: PropTypes.func,
 };
 
 export default Post;
