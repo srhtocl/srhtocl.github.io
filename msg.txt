@@ -1,1 +1,1 @@
-feat: telemetri sistemi ve admin UI gelistirmeleri  
+fix: layout in telemetry modal  

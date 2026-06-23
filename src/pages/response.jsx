@@ -114,20 +114,20 @@ export default function Response() {
                                     {/* Ağ & Konum */}
                                     <div className="flex flex-col gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100 col-span-2">
                                         <span className="font-semibold text-slate-800 text-[11px] uppercase tracking-wider mb-1 flex items-center gap-1"><FiMapPin/> Ağ & Konum</span>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            {metadata.location && metadata.location !== "Bilinmiyor" && <span className="flex items-start gap-2 text-xs"><FiMapPin size={14} className="text-slate-400 shrink-0 mt-0.5"/> <span className="truncate">{metadata.location}</span></span>}
-                                            {metadata.isp && metadata.isp !== "Bilinmiyor" && <span className="flex items-start gap-2 text-xs"><FiServer size={14} className="text-slate-400 shrink-0 mt-0.5"/> <span className="truncate">{metadata.isp}</span></span>}
-                                            {metadata.network && metadata.network !== "Bilinmiyor" && <span className="flex items-center gap-2 text-xs col-span-2"><FiWifi size={14} className="text-slate-400"/> {metadata.network}</span>}
+                                        <div className="flex flex-col gap-2">
+                                            {metadata.location && metadata.location !== "Bilinmiyor" && <span className="flex items-start gap-2 text-xs"><FiMapPin size={14} className="text-slate-400 shrink-0 mt-0.5"/> <span>{metadata.location}</span></span>}
+                                            {metadata.isp && metadata.isp !== "Bilinmiyor" && <span className="flex items-start gap-2 text-xs"><FiServer size={14} className="text-slate-400 shrink-0 mt-0.5"/> <span>{metadata.isp}</span></span>}
+                                            {metadata.network && metadata.network !== "Bilinmiyor" && <span className="flex items-center gap-2 text-xs"><FiWifi size={14} className="text-slate-400"/> {metadata.network}</span>}
                                         </div>
                                     </div>
 
                                     {/* Oturum */}
                                     <div className="flex flex-col gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100 col-span-2">
                                         <span className="font-semibold text-slate-800 text-[11px] uppercase tracking-wider mb-1 flex items-center gap-1"><FiClock/> Oturum</span>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            {metadata.timeZone && metadata.timeZone !== "Bilinmiyor" && <span className="flex items-center gap-2 text-xs"><FiClock size={14} className="text-slate-400"/> <span className="truncate">{metadata.timeZone}</span></span>}
-                                            {metadata.language && <span className="flex items-center gap-2 text-xs"><FiGlobe size={14} className="text-slate-400"/> {metadata.language.toUpperCase()}</span>}
-                                            {metadata.referrer && metadata.referrer !== "Doğrudan URL" && <span className="flex items-start gap-2 text-xs col-span-2"><FiLink size={14} className="text-slate-400 shrink-0 mt-0.5"/> <span className="truncate break-all whitespace-normal">{metadata.referrer}</span></span>}
+                                        <div className="flex flex-col gap-2">
+                                            {metadata.timeZone && metadata.timeZone !== "Bilinmiyor" && <span className="flex items-center gap-2 text-xs"><FiClock size={14} className="text-slate-400 shrink-0"/> <span>{metadata.timeZone}</span></span>}
+                                            {metadata.language && <span className="flex items-center gap-2 text-xs"><FiGlobe size={14} className="text-slate-400 shrink-0"/> {metadata.language.toUpperCase()}</span>}
+                                            {metadata.referrer && <span className="flex items-start gap-2 text-xs"><FiLink size={14} className="text-slate-400 shrink-0 mt-0.5"/> <span className="break-all">{metadata.referrer}</span></span>}
                                         </div>
                                     </div>
 
