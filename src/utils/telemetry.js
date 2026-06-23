@@ -13,12 +13,16 @@ export async function getVisitorMetadata() {
 
         // 2. Tarayıcı Tespiti
         let browser = "Bilinmiyor";
-        if (ua.indexOf("Firefox") > -1) browser = "Firefox";
-        else if (ua.indexOf("Opera") > -1 || ua.indexOf("OPR") > -1) browser = "Opera";
-        else if (ua.indexOf("Trident") > -1) browser = "IE";
-        else if (ua.indexOf("Edge") > -1) browser = "Edge";
-        else if (ua.indexOf("Chrome") > -1) browser = "Chrome";
-        else if (ua.indexOf("Safari") > -1) browser = "Safari";
+        if (ua.includes("Instagram")) browser = "Instagram App";
+        else if (ua.includes("FBAN") || ua.includes("FBAV")) browser = "Facebook App";
+        else if (ua.includes("Twitter")) browser = "Twitter App";
+        else if (ua.includes("SamsungBrowser")) browser = "Samsung Internet";
+        else if (ua.includes("Edg") || ua.includes("Edge")) browser = "Edge";
+        else if (ua.includes("OPR") || ua.includes("Opera")) browser = "Opera";
+        else if (ua.includes("MiuiBrowser")) browser = "Mi Browser";
+        else if (ua.includes("Firefox") || ua.includes("FxiOS")) browser = "Firefox";
+        else if (ua.includes("Chrome") || ua.includes("CriOS")) browser = "Chrome";
+        else if (ua.includes("Safari") && !ua.includes("Chrome")) browser = "Safari";
 
         // 3. Cihaz Türü
         let deviceType = "Masaüstü";
