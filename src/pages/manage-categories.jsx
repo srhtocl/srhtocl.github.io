@@ -12,16 +12,16 @@ export default function ManageCategories() {
     const [editValue, setEditValue] = useState("");
     const [saving, setSaving] = useState(false);
 
-    useEffect(() => {
-        fetchCategories();
-    }, []);
-
     const fetchCategories = async () => {
         setLoading(true);
         const cats = await getAllCategories();
         setCategories(cats);
         setLoading(false);
     };
+
+    useEffect(() => {
+        fetchCategories();
+    }, []);
 
     const startEdit = (cat) => {
         setEditingId(cat.id);

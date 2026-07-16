@@ -6,10 +6,18 @@ import { storage } from './firebase';
  * @returns {Promise<Array>} Array of image objects { url, ref, name }
  */
 export const fetchAllImages = async () => {
-    const listRef = ref(storage, 'posts/');
-    const res = await listAll(listRef);
+    const postsRef = ref(storage, 'posts/');
+    const profileRef = ref(storage, 'profile/');
 
-    const urlPromises = res.items.map(async (itemRef) => {
+    // Her iki klasörü de oku (Hata verirse boş array dön)
+    const [postsRes, profileRes] = await Promise.all([
+        listAll(postsRef).catch(() => ({ items: [] })),
+        listAll(profileRef).catch(() => ({ items: [] }))
+    ]);
+
+    const allItems = [...postsRes.items, ...profileRes.items];
+
+    const urlPromises = allItems.map(async (itemRef) => {
         const url = await getDownloadURL(itemRef);
         return { url, ref: itemRef, name: itemRef.name };
     });

@@ -15,6 +15,16 @@ export default function Archive() {
 
     const observer = useRef();
 
+    const fetchMore = async () => {
+        if (loadingMore || !hasMore) return;
+        setLoadingMore(true);
+        const result = await getPaginatedPosts(lastVisible, LIMIT, null, true);
+        setPosts(prev => [...prev, ...result.posts]);
+        setLastVisible(result.lastVisible);
+        setHasMore(result.hasMore);
+        setLoadingMore(false);
+    };
+
     // IntersectionObserver — son elemente bağlanır, görününce daha fazla yükler
     const lastPostCallbackRef = useCallback(node => {
         if (loadingMore) return;
@@ -40,19 +50,9 @@ export default function Archive() {
         fetchPosts();
     }, [fetchPosts]);
 
-    const fetchMore = async () => {
-        if (loadingMore || !hasMore) return;
-        setLoadingMore(true);
-        const result = await getPaginatedPosts(lastVisible, LIMIT, null, true);
-        setPosts(prev => [...prev, ...result.posts]);
-        setLastVisible(result.lastVisible);
-        setHasMore(result.hasMore);
-        setLoadingMore(false);
-    };
-
     const handleUnarchive = async (postId) => {
-        const success = await updatePostStatus(postId, ["published"]);
-        if (success) {
+        const result = await updatePostStatus(postId, ["published"]);
+        if (result.success) {
             toast.success("Gönderi yayına alındı.");
             setPosts(prev => prev.filter(p => p.id !== postId));
         } else {

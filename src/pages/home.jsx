@@ -11,37 +11,16 @@
  * @author [AI Assistant]
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../services/firebase";
 import { FiMessageSquare, FiX } from "react-icons/fi";
-import { userConfig } from "../config/user-config";
+import { useProfileContext } from "../context/profile-context";
+import { useAuth } from "../context/auth-context";
 
 export default function Home() {
-    const [profile, setProfile] = useState({
-        photoURL: userConfig.avatarUrl,
-        bio: userConfig.bio
-    });
+    const { profile } = useProfileContext();
+    const { user } = useAuth();
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
-
-    useEffect(() => {
-        const fetchProfile = async () => {
-            try {
-                const docRef = doc(db, "admin", "profile");
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
-                    setProfile({
-                        photoURL: docSnap.data().photoURL || profile.photoURL,
-                        bio: docSnap.data().bio || profile.bio
-                    });
-                }
-            } catch (error) {
-                console.error("Profil verisi çekilemedi:", error);
-            }
-        };
-        fetchProfile();
-    }, []);
 
     return (
         <section className="relative flex flex-col w-full h-full justify-center items-center overflow-hidden bg-gradient-to-br from-slate-50 via-gray-100 to-slate-200">
@@ -62,36 +41,39 @@ export default function Home() {
                     <div className="relative w-40 h-40 md:w-56 md:h-56 p-1 border-4 border-white/50 rounded-full shadow-2xl transform transition-transform duration-500 group-hover:scale-105">
                         <img
                             className="w-full h-full rounded-full object-cover grayscale transition-all duration-500 group-hover:grayscale-0"
-                            src={profile.photoURL}
-                            alt={userConfig.displayName}
+                            src={profile.photoURL || null}
+                            alt={profile.displayName || undefined}
                         />
                     </div>
                 </div>
 
                 {/* Typography Section */}
-                <div className="space-y-6">
-                    <p className="text-2xl md:text-3xl text-slate-700 font-['Marck_Script'] tracking-wide max-w-2xl mx-auto leading-relaxed drop-shadow-sm select-none">
-                        {profile.bio}
-                    </p>
-                </div>
+                {profile.bio && (
+                    <div className="space-y-6">
+                        <p className="text-2xl md:text-3xl text-slate-700 font-['Marck_Script'] tracking-wide max-w-2xl mx-auto leading-relaxed drop-shadow-sm select-none">
+                            {profile.bio}
+                        </p>
+                    </div>
+                )}
 
             </div>
 
-            {/* Floating Action Button (FAB) for Messages */}
-            {/* FAB for Messages - Positioned EXACTLY matching Message Page Button Coordinate */}
-            <div className="fixed bottom-0 left-0 w-full z-30 p-4 pointer-events-none">
-                <div className="w-full max-w-2xl mx-auto flex justify-end pointer-events-none">
-                    <div className="p-2 pointer-events-auto">
-                        <Link
-                            to="/message"
-                            className="flex items-center justify-center w-12 h-12 bg-white text-slate-800 border border-slate-200 rounded-xl shadow-md hover:bg-slate-50 transition-all active:scale-95"
-                            aria-label="Mesaj Gönder"
-                        >
-                            <FiMessageSquare size={20} />
-                        </Link>
+            {/* FAB - Sadece giriş yapılmamışsa göster */}
+            {!user && (
+                <div className="fixed bottom-0 left-0 w-full z-30 p-4 pointer-events-none">
+                    <div className="w-full max-w-2xl mx-auto flex justify-end pointer-events-none">
+                        <div className="p-2 pointer-events-auto">
+                            <Link
+                                to="/message"
+                                className="flex items-center justify-center w-12 h-12 bg-white text-slate-800 border border-slate-200 rounded-xl shadow-md hover:bg-slate-50 transition-all active:scale-95"
+                                aria-label="Mesaj Gönder"
+                            >
+                                <FiMessageSquare size={20} />
+                            </Link>
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             {/* Lightbox Modal */}
             {/* Lightbox Modal - Full Immersive */}
@@ -101,14 +83,14 @@ export default function Home() {
                     onClick={() => setIsLightboxOpen(false)}
                 >
                     <button
-                        className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-all z-50 hover:rotate-90 duration-300"
+                        className="absolute top-4 right-4 p-1.5 bg-white/10 hover:bg-white/20 text-white rounded-md backdrop-blur-md transition-all z-50 hover:rotate-90 duration-300"
                         onClick={(e) => { e.stopPropagation(); setIsLightboxOpen(false); }}
                     >
-                        <FiX size={32} />
+                        <FiX size={20} />
                     </button>
 
                     <img
-                        src={profile.photoURL}
+                        src={profile.photoURL || null}
                         alt="Profile Full"
                         className="w-screen h-screen object-contain animate-in zoom-in-50 slide-in-from-bottom-10 duration-500 ease-out select-none"
                         onClick={(e) => e.stopPropagation()}

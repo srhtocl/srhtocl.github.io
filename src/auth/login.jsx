@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from '../context/auth-context';
+import toast from 'react-hot-toast';
 
 export default function Login() {
 
@@ -32,7 +33,8 @@ export default function Login() {
                 navigate("/");
             })
             .catch((error) => {
-                console.log(error.code, error.message);
+                console.error("Login error:", error.code);
+                toast.error("Giriş başarısız! E-posta veya şifre hatalı.");
             });
     }
 

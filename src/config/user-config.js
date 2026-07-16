@@ -1,18 +1,10 @@
+/**
+ * @file user-config.js
+ * @description Uygulama genelinde kullanılan statik konfigürasyon.
+ * Profil bilgileri ve içerik verisi için kaynak Firestore'dur — bu dosyada tutulmaz.
+ */
 export const userConfig = {
-    // User Profile
-    displayName: "Serhat Öcal",
-    username: "@srhtocl",
-    avatarUrl: "https://pbs.twimg.com/profile_images/1483105275766882304/4CYpr2hO_400x400.jpg",
-    bio: "bir-iki kelime bile sessizlikten iyidir.",
-    
-    // Categories
-    defaultCategories: [
-        "Günlük",
-        "Fikir",
-        "İş",
-        "Teknoloji",
-        "Seyahat",
-        "Spor",
-        "Sanat"
-    ]
+    // Admin Firebase UID — UI seviyesinde admin menüsünü göster/gizle için kullanılır.
+    // Asıl yetki kontrolü Firestore Security Rules'da (sunucu tarafında) yapılmaktadır.
+    adminUID: import.meta.env.VITE_ADMIN_UID,
 };

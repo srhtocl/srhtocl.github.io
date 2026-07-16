@@ -7,7 +7,6 @@ import { useChat } from "../hooks/useChat";
 export default function Message() {
     const [draft, setDraft] = useState("");
 
-    // Use Custom Hook
     const {
         user,
         messages,

@@ -4,7 +4,6 @@ import { doc, setDoc } from "firebase/firestore";
 
 export const requestForToken = async (userId) => {
     if (!('Notification' in window)) {
-        console.log("This browser does not support desktop notification");
         return null;
     }
 
@@ -16,13 +15,12 @@ export const requestForToken = async (userId) => {
             });
 
             if (token) {
-                console.log('FCM Token Alındı:', token);
                 await saveTokenToDatabase(userId, token);
                 return token;
             }
         }
     } catch (err) {
-        console.log('Token alma hatası:', err);
+        // Token alınamadı (izin reddedildi veya tarayıcı desteklemiyor)
     }
     return null;
 };
@@ -49,7 +47,6 @@ const saveTokenToDatabase = async (userId, token) => {
                 // CAUTION: Document does NOT exist (e.g. fresh user who hasn't sent a message yet but granted permission)
                 // We must create the document properly so useChat can find it later.
                 // It must have the 'user' field matched to the cookie ID.
-                console.log("Kullanıcı dökümanı yok, yeni oluşturuluyor...", userId);
                 await insertDocument({
                     user: userId,
                     messages: [],

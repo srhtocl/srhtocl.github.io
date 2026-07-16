@@ -92,7 +92,6 @@ export const useProfile = () => {
 
             // 1. Yeni resim varsa Storage'a yükle
             if (imageFile) {
-                if (user) console.log(`[DEBUG] Uploading as UID: ${user.uid}`);
                 const storageRef = ref(storage, `profile/admin_profile_${Date.now()}`);
                 const snapshot = await uploadBytes(storageRef, imageFile);
                 finalPhotoURL = await getDownloadURL(snapshot.ref);
@@ -116,21 +115,23 @@ export const useProfile = () => {
             // 4. AUTO-POST Mantığı (Otomatik Gönderi)
             // Eğer fotoğraf değiştiyse
             if (imageFile) {
-                await insertDocument({
+                const postResult = await insertDocument({
                     content: newBio,
                     images: [finalPhotoURL],
                     image_url: finalPhotoURL,
                     timestamp: new Date()
                 });
+                if (!postResult.success) console.warn("[useProfile] Auto-post oluşturulamadı:", postResult.error);
             }
             // Sadece biyo değiştiyse
             else if (newBio !== profile.initialBio) {
-                await insertDocument({
+                const postResult = await insertDocument({
                     content: `Durum güncellemesi: \n\n"${newBio}" ✍️`,
                     images: [],
                     image_url: null,
                     timestamp: new Date()
                 });
+                if (!postResult.success) console.warn("[useProfile] Auto-post oluşturulamadı:", postResult.error);
             }
 
             // State'i güncelle

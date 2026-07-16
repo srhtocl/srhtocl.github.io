@@ -23,16 +23,18 @@ import { deleteDocument, updatePostStatus } from '../services/post-methods';
 import { useAuth } from '../context/auth-context';
 import PostImages from './post-images';
 import { userConfig } from '../config/user-config';
+import { useProfileContext } from '../context/profile-context';
 
 const Post = ({ post, onDelete, onUnarchive }) => {
   const [showMenu, setShowMenu] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { profile } = useProfileContext();
 
   const handleDelete = async () => {
     if (window.confirm("Bu gönderiyi silmek istediğinize emin misiniz?")) {
       const result = await deleteDocument(post.id);
-      if (result === null) {
+      if (result.success) {
         if (onDelete) onDelete(post.id);
       } else {
         alert("Silme işlemi başarısız oldu.");
@@ -52,13 +54,13 @@ const Post = ({ post, onDelete, onUnarchive }) => {
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden ring-2 ring-slate-50">
             <img
-              src={userConfig.avatarUrl}
-              alt={userConfig.displayName}
+              src={profile.photoURL || null}
+              alt={profile.displayName || undefined}
               className="w-full h-full object-cover"
             />
           </div>
           <div className="flex flex-col">
-            <h3 className="text-slate-800 font-bold text-sm font-['Ubuntu']">{userConfig.displayName}</h3>
+            <h3 className="text-slate-800 font-bold text-sm font-['Ubuntu']">{profile.displayName}</h3>
             <div className="flex items-center gap-2 text-xs font-['Ubuntu']">
               <span className="text-slate-400">
                 {post.timestamp?.seconds
@@ -70,7 +72,7 @@ const Post = ({ post, onDelete, onUnarchive }) => {
         </div>
 
         {/* Menu Button (Only for Admin) */}
-        {user && user.uid === "2t2Fg2aX8ePpfhsDAWoYEosDcmv1" && (
+        {user && user.uid === userConfig.adminUID && (
           <div className="relative">
             <button onClick={() => setShowMenu(!showMenu)} className="p-2 text-slate-300 hover:text-slate-500 transition-colors">
               <FiMoreVertical size={20} />
@@ -101,8 +103,8 @@ const Post = ({ post, onDelete, onUnarchive }) => {
                     } else {
                       // Normal sayfada: arşivle
                       if (window.confirm("Bu gönderiyi arşivlemek istediğinize emin misiniz? Ana sayfada görünmeyecek.")) {
-                        const success = await updatePostStatus(post.id, ['archived']);
-                        if (success) {
+                        const result = await updatePostStatus(post.id, ['archived']);
+                        if (result.success) {
                           if (onDelete) onDelete(post.id);
                         } else {
                           alert("Arşivleme başarısız.");
@@ -132,14 +134,36 @@ const Post = ({ post, onDelete, onUnarchive }) => {
       </div>
 
       {/* 2. Body Area (Content) */}
-      <div className="p-4 bg-slate-50/30 min-h-[5rem]">
-        {hasImages ? (
-          <PostImages images={rawImages} content={post.content} />
-        ) : (
-          <p className="text-slate-700 font-['Ubuntu'] text-lg leading-relaxed whitespace-pre-wrap">
-            {post.content}
-          </p>
+      <div className="bg-slate-50/30 min-h-[5rem]">
+
+        {/* YouTube Embed — gizlilik dostu mod (nocookie) */}
+        {post.youtube_id && (
+          <div className="relative w-full overflow-hidden" style={{ paddingBottom: '56.25%' }}>
+            <iframe
+              className="absolute top-0 left-0 w-full h-full"
+              src={`https://www.youtube-nocookie.com/embed/${post.youtube_id}`}
+              title="YouTube video"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              loading="lazy"
+            />
+          </div>
         )}
+
+        {/* Görsel veya Metin */}
+        {(hasImages || post.content) && (
+          <div className="p-4">
+            {hasImages ? (
+              <PostImages images={rawImages} content={post.content} />
+            ) : (
+              <p className="text-slate-700 font-['Ubuntu'] text-lg leading-relaxed whitespace-pre-wrap">
+                {post.content}
+              </p>
+            )}
+          </div>
+        )}
+
       </div>
 
       {/* 3. Footer Area (Visual Actions) */}

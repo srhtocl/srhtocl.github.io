@@ -1,4 +1,3 @@
-import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { FiHome, FiEdit, FiSearch, FiMessageSquare } from 'react-icons/fi';
 import { useAuth } from '../context/auth-context';

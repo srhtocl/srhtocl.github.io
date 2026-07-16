@@ -3,7 +3,7 @@ import { deleteDocument, subscribeToAllMessages } from "../services/db-methods";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/auth-context";
 import { FiMessageSquare, FiTrash2, FiBellOff, FiMonitor, FiSmartphone, FiTablet, FiGlobe } from "react-icons/fi";
-import { requestForToken, sendNotification } from "../services/notification";
+import { requestForToken } from "../services/notification";
 import toast from "react-hot-toast";
 
 function AllMessage() {
@@ -64,7 +64,7 @@ function AllMessage() {
         const token = await requestForToken("admin_device");
         setNotificationPermission(Notification.permission);
         if (token) {
-            console.log("Admin bildirimleri açıldı.");
+            toast.success("Bildirimler açıldı!");
         }
     };
 
@@ -112,10 +112,9 @@ function AllMessage() {
                 {authContext.user ? (
                     messages.length > 0 ? (
                         messages.map((message) => {
-                            if (!message.messages || !message.messages[0]) return null;
-
-                            const lastMsg = message.messages.at(-1);
-                            const isAdmin = lastMsg.user === "admin";
+                            const hasMessages = message.messages && message.messages.length > 0;
+                            const lastMsg = hasMessages ? message.messages.at(-1) : null;
+                            const isAdmin = hasMessages ? lastMsg.user === "admin" : false;
 
                             return (
                                 <Link
@@ -162,20 +161,28 @@ function AllMessage() {
 
                                     {/* Card Body: Message */}
                                     <div className="p-4">
-                                        <p className="text-slate-600 text-sm truncate font-['Ubuntu'] leading-relaxed">
-                                            {isAdmin && <span className="font-medium text-slate-800">Siz: </span>}
-                                            {lastMsg.data}
+                                        <p className={`text-sm truncate font-['Ubuntu'] leading-relaxed ${hasMessages ? 'text-slate-600' : 'text-slate-400 italic'}`}>
+                                            {hasMessages ? (
+                                                <>
+                                                    {isAdmin && <span className="font-medium text-slate-800">Siz: </span>}
+                                                    {lastMsg.data}
+                                                </>
+                                            ) : (
+                                                "Henüz mesaj göndermedi (Sadece Ziyaret)"
+                                            )}
                                         </p>
                                     </div>
 
                                     {/* Card Footer: Date */}
-                                    {lastMsg.time && (
-                                        <div className="bg-slate-50/50 px-4 py-2 border-t border-slate-100/50 flex justify-end">
-                                            <span className="text-[10px] text-slate-400 font-['Ubuntu']">
-                                                {new Date(lastMsg.time).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
-                                            </span>
-                                        </div>
-                                    )}
+                                    <div className="bg-slate-50/50 px-4 py-2 border-t border-slate-100/50 flex justify-end">
+                                        <span className="text-[10px] text-slate-400 font-['Ubuntu']">
+                                            {hasMessages && lastMsg.time ? (
+                                                new Date(lastMsg.time).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+                                            ) : message.metadata?.lastUpdate ? (
+                                                new Date(message.metadata.lastUpdate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+                                            ) : null}
+                                        </span>
+                                    </div>
                                 </Link>
                             )
                         })

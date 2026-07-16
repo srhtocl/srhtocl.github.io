@@ -2,54 +2,44 @@ import { postCollectionRef } from "./firebase";
 
 import { doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs, query, orderBy, limit, startAfter, where } from "firebase/firestore";
 
+// --- HELPER FOR STANDARDIZED ANSWERS ---
+const createResponse = (success, data = null, error = null) => ({
+    success,
+    data,
+    error: error ? { code: error.code || 'UNKNOWN', message: error.message || 'An error occurred' } : null
+});
 
-
+// --- CORE METHODS ---
 
 async function getAllDocuments() {
-
-    let docs = [];
-
     try {
-
         const querySnapshot = await getDocs(postCollectionRef);
-
+        const docs = [];
         querySnapshot.forEach((doc) => {
             docs.push({ ...doc.data(), id: doc.id });
         });
-
-    }
-
-    catch (error) { console.error("hata: ", error); }
-
-    finally { return docs; }
-
-}
-async function getAllDocumentsIds() {
-
-    let docIds = [];
-
-    try {
-
-        const querySnapshot = await getDocs(postCollectionRef);
-
-        querySnapshot.forEach((doc) => {
-
-            docIds.push(doc.id);
-
-        });
-
+        return createResponse(true, docs);
     } catch (error) {
+        console.error("Service Error (getAllDocuments):", error);
+        return createResponse(false, null, error);
+    }
+}
 
-        console.error("hata: ", error);
-
-    } finally {
-        return docIds;
+async function getAllDocumentsIds() {
+    try {
+        const querySnapshot = await getDocs(postCollectionRef);
+        const docIds = [];
+        querySnapshot.forEach((doc) => {
+            docIds.push(doc.id);
+        });
+        return createResponse(true, docIds);
+    } catch (error) {
+        console.error("Service Error (getAllDocumentsIds):", error);
+        return createResponse(false, null, error);
     }
 }
 
 async function getPaginatedPosts(lastVisible = null, limitCount = 10, category = null, archivedOnly = false) {
-    let response = { posts: [], lastVisible: null, hasMore: false };
-
     try {
         let q;
         if (category) {
@@ -86,126 +76,84 @@ async function getPaginatedPosts(lastVisible = null, limitCount = 10, category =
             }
         });
 
-        response = { posts, lastVisible: lastVisibleDoc, hasMore };
+        return { posts, lastVisible: lastVisibleDoc, hasMore };
 
     } catch (error) {
-        console.error("hata: ", error);
-    } finally {
-        return response;
+        console.error("Service Error (getPaginatedPosts):", error);
+        return { posts: [], lastVisible: null, hasMore: false };
     }
 }
 
-
-// insert a document to message collection
-
 async function insertDocument(data) {
-
-    let docId = null;
-
     try {
-
         const docRef = await addDoc(postCollectionRef, data);
-
-        docId = docRef.id;
-
+        return createResponse(true, { id: docRef.id });
     } catch (error) {
-
-        return error.message;
-
-    } finally { return docId; }
+        console.error("Service Error (insertDocument):", error);
+        return createResponse(false, null, error);
+    }
 }
-
 
 async function updateDocument(docId, data) {
-
-    var response = false;
-
     try {
-
         const docRef = doc(postCollectionRef, docId);
-
         await updateDoc(docRef, data);
-        response = true;
-
+        return createResponse(true);
     } catch (error) {
-
-        response = error.message;
-
-    } finally { return response; }
+        console.error("Service Error (updateDocument):", error);
+        return createResponse(false, null, error);
+    }
 }
 
-
 async function deleteDocument(docId) {
-
-    var response = null;
-
     try {
-
         const docRef = doc(postCollectionRef, docId);
 
         // Reverted: We do NOT delete images from Storage automatically anymore.
         // User wants to keep them for a potential Gallery feature.
 
         await deleteDoc(docRef);
-
+        return createResponse(true);
     } catch (error) {
-
-        response = error.message;
-
-    } finally { return response; }
+        console.error("Service Error (deleteDocument):", error);
+        return createResponse(false, null, error);
+    }
 }
 
-
 async function getDocumentById(docId) {
-
-    var response = null;
-
     try {
-
         const docRef = doc(postCollectionRef, docId);
-
         const docSnapshot = await getDoc(docRef);
 
         if (docSnapshot.exists()) {
-            response = { ...docSnapshot.data(), id: docSnapshot.id };
+            return createResponse(true, { ...docSnapshot.data(), id: docSnapshot.id });
+        } else {
+            return createResponse(false, null, { code: 'NOT_FOUND', message: 'Document not found' });
         }
-
-        else { response = null; }
-
     } catch (error) {
-
-        response = error.message;
-
-    } finally { return response; }
+        console.error("Service Error (getDocumentById):", error);
+        return createResponse(false, null, error);
+    }
 }
 
 async function updatePostStatus(docId, status) {
     try {
         const docRef = doc(postCollectionRef, docId);
         await updateDoc(docRef, { status: status });
-        return true;
+        return createResponse(true);
     } catch (error) {
-        console.error("Error updating status:", error);
-        return false;
+        console.error("Service Error (updatePostStatus):", error);
+        return createResponse(false, null, error);
     }
 }
 
 export {
-
-    getDocumentById, // get a document from post collection
-
-    getAllDocuments, // get all documents from post collection
-
-    getPaginatedPosts, // get paginated posts
-
-    getAllDocumentsIds, // get all documents ids from post collection
-
-    insertDocument, // insert a document to post collection
-
-    updateDocument, // update a document in post collection
-    
-    updatePostStatus, // update post status
-
-    deleteDocument, // delete a document from post collection
-
+    getDocumentById,
+    getAllDocuments,
+    getPaginatedPosts,
+    getAllDocumentsIds,
+    insertDocument,
+    updateDocument,
+    updatePostStatus,
+    deleteDocument,
 };

@@ -31,7 +31,6 @@ export default function AllPosts() {
         );
     }, [posts, searchQuery]);
 
-    const lastPostElementRef = useRef(null);
     const lastPostCallbackRef = React.useCallback(node => {
         if (loading) return;
         if (observer.current) observer.current.disconnect();

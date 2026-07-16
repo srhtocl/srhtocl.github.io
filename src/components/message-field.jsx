@@ -1,4 +1,4 @@
-import React from "react";
+
 
 function MessageField(props) {
 
@@ -8,8 +8,8 @@ function MessageField(props) {
                 !props.messages[0] ?
 
                     <div className="flex flex-col h-full justify-end pb-4">
-                        <div className="flex w-full justify-end">
-                            <div className="max-w-[75%] px-5 py-3 rounded-2xl shadow-md text-sm md:text-base font-['Ubuntu'] bg-slate-700 text-white rounded-tr-none animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="flex w-full justify-start">
+                            <div className="max-w-[75%] px-5 py-3 rounded-2xl shadow-md text-sm md:text-base font-['Ubuntu'] bg-white text-slate-800 border border-slate-200 rounded-tl-none animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 Merhaba.
                             </div>
                         </div>
@@ -21,13 +21,13 @@ function MessageField(props) {
                         <div
                             key={index}
                             id={index}
-                            className={`flex w-full ${msgObjs.user === "admin" ? "justify-end" : "justify-start"}`}
+                            className={`flex w-full ${msgObjs.user === "admin" ? "justify-start" : "justify-end"}`}
                         >
-                            <div className={`max-w-[75%] px-5 py-3 rounded-2xl shadow-sm text-sm md:text-base font-['Ubuntu'] ${msgObjs.user === "admin"
-                                ? "bg-slate-700 text-white rounded-tr-none"
-                                : "bg-white text-slate-800 border border-slate-200 rounded-tl-none"
+                            <div className={`max-w-[75%] px-5 py-3 rounded-2xl shadow-sm text-sm md:text-base font-['Ubuntu'] flex flex-col gap-1 ${msgObjs.user === "admin"
+                                ? "bg-white text-slate-800 border border-slate-200 rounded-tl-none"
+                                : "bg-slate-700 text-white rounded-tr-none"
                                 }`}>
-                                {msgObjs.data}
+                                <span>{msgObjs.data}</span>
                             </div>
                         </div>
                     ))

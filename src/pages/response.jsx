@@ -143,7 +143,7 @@ export default function Response() {
                     </div>
                 ) : (
                     <div className="pt-2">
-                        <MessageField messages={messages} />
+                        <MessageField messages={messages} isAdmin={true} />
                     </div>
                 )}
             </div>

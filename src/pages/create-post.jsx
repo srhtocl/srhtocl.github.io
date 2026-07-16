@@ -2,9 +2,10 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../context/auth-context';
 import { useNavigate, useLocation } from 'react-router';
 import { insertDocument, updateDocument } from '../services/post-methods';
-import { userConfig } from '../config/user-config';
+import { useProfileContext } from '../context/profile-context';
 import { getAllCategories, ensureCategoryExists } from '../services/category-methods';
 import { FiSend, FiImage, FiX } from "react-icons/fi";
+import { FaYoutube } from "react-icons/fa";
 import { storage } from '../services/firebase';
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
@@ -14,7 +15,6 @@ const CreatePost = () => {
   const [availableCategories, setAvailableCategories] = useState([]);
   const [filteredCategories, setFilteredCategories] = useState([]); // Filtered list for UI
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
 
   const [existingImages, setExistingImages] = useState([]); // URLs from DB
   const [newFiles, setNewFiles] = useState([]); // File objects to upload
@@ -22,7 +22,13 @@ const CreatePost = () => {
   const fileInputRef = useRef(null);
   const dropdownRef = useRef(null);
 
+  // YouTube
+  const [youtubeId, setYoutubeId] = useState('');
+  const [youtubeDraft, setYoutubeDraft] = useState('');
+  const [showYoutubeInput, setShowYoutubeInput] = useState(false);
+
   const authContext = useAuth();
+  const { profile } = useProfileContext();
   const navigate = useNavigate();
   const location = useLocation();
   const editMode = location.state?.postToEdit;
@@ -34,34 +40,29 @@ const CreatePost = () => {
       return;
     }
 
-    console.log("Current User UID:", authContext.user.uid);
-
     // 2. Fetch categories (only if authenticated)
     (async () => {
       try {
         const cats = await getAllCategories();
-        if (cats && cats.length > 0) {
-          setAvailableCategories(cats);
-        } else {
-          console.warn("No categories found in DB, using defaults.");
-          setAvailableCategories(userConfig.defaultCategories.map(c => ({ name: c })));
-        }
+        setAvailableCategories(cats || []);
       } catch (err) {
         console.error("Failed to load categories in component:", err);
-        // Fallback
-        setAvailableCategories(userConfig.defaultCategories.map(c => ({ name: c })));
       }
     })();
 
     if (editMode) {
       setContent(editMode.content);
       setCategory(editMode.category || '');
+      if (editMode.youtube_id) setYoutubeId(editMode.youtube_id);
       // Backward compatibility: If 'images' array exists use it, else if 'image_url' string exists use it.
       if (editMode.images && Array.isArray(editMode.images)) {
         setExistingImages(editMode.images);
       } else if (editMode.image_url) {
         setExistingImages([editMode.image_url]);
       }
+    } else if (location.state?.reshareImageUrl) {
+      // Handle gallery reshare logic
+      setExistingImages([location.state.reshareImageUrl]);
     }
 
     // Close suggestions on outside click
@@ -109,9 +110,28 @@ const CreatePost = () => {
     setExistingImages(prev => prev.filter(url => url !== urlToRemove));
   };
 
+  // YouTube URL'inden 11 karakterlik video ID'sini çıkarır
+  const parseYoutubeId = (url) => {
+    const match = url.match(
+      /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/
+    );
+    return match ? match[1] : null;
+  };
+
+  // URL girdisini dinler; geçerli bir YouTube linki yapıştırılınca ID'yi otomatik yakalar
+  const handleYoutubeInput = (e) => {
+    const val = e.target.value;
+    setYoutubeDraft(val);
+    const id = parseYoutubeId(val);
+    if (id) {
+      setYoutubeId(id);
+      setShowYoutubeInput(false);
+      setYoutubeDraft('');
+    }
+  };
+
   const handleSave = async () => {
-    if (!content.trim() && existingImages.length === 0 && newFiles.length === 0) return;
-    if (!content.trim()) return; // Optional: Enforce text content? Currently yes.
+    if (!content.trim() && existingImages.length === 0 && newFiles.length === 0 && !youtubeId) return;
 
     setUploading(true);
     let finalImageUrls = [...existingImages];
@@ -136,23 +156,26 @@ const CreatePost = () => {
       const postData = {
         content,
         images: finalImageUrls,
+        youtube_id: youtubeId || '',
         category: category.trim(),
         updated_at: new Date(),
       };
 
       if (editMode) {
-        await updateDocument(editMode.id, postData);
+        const result = await updateDocument(editMode.id, postData);
+        if (!result.success) throw new Error(result.error?.message || "Güncelleme başarısız");
       } else {
         postData.timestamp = new Date();
         postData.status = ['published']; // Default status as Array
-        // Removed like_count as requested
-        await insertDocument(postData);
+        const result = await insertDocument(postData);
+        if (!result.success) throw new Error(result.error?.message || "Ekleme başarısız");
       }
 
       setContent('');
       setCategory('');
       setNewFiles([]);
       setExistingImages([]);
+      setYoutubeId('');
       navigate('/posts');
 
     } catch (error) {
@@ -178,13 +201,13 @@ const CreatePost = () => {
           <div className="bg-slate-100/50 px-4 py-3 flex items-center gap-3 border-b border-slate-100">
             <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden">
               <img
-                src={userConfig.avatarUrl}
-                alt={userConfig.displayName}
+                src={profile.photoURL || null}
+                alt={profile.displayName || undefined}
                 className="w-full h-full object-cover"
               />
             </div>
             <div className="flex flex-col">
-              <span className="text-slate-700 font-bold text-sm font-['Ubuntu']">{userConfig.displayName}</span>
+              <span className="text-slate-700 font-bold text-sm font-['Ubuntu']">{profile.displayName}</span>
               <span className="text-slate-400 text-xs">{new Date().toLocaleDateString('tr-TR')}</span>
             </div>
           </div>
@@ -241,11 +264,54 @@ const CreatePost = () => {
                 disabled={uploading}
               />
 
-              {/* Image Preview Strip (Max Height 56px) */}
-              {(existingImages.length > 0 || newFiles.length > 0) && (
+              {/* YouTube URL Input — linkini yapıştır, otomatik algılar */}
+              {showYoutubeInput && (
+                <div className="flex items-center gap-2 px-1 py-2 mt-1 border-t border-slate-100/80 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                  <FaYoutube size={16} className="text-red-500 shrink-0" />
+                  <input
+                    type="url"
+                    autoFocus
+                    placeholder="YouTube linkini yapıştır..."
+                    value={youtubeDraft}
+                    onChange={handleYoutubeInput}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') { setShowYoutubeInput(false); setYoutubeDraft(''); }
+                    }}
+                    className="flex-1 text-sm bg-transparent outline-none text-slate-700 placeholder-slate-400 font-['Ubuntu']"
+                  />
+                  {youtubeDraft && (
+                    <button onClick={() => setYoutubeDraft('')} className="text-slate-400 shrink-0 hover:text-slate-600">
+                      <FiX size={14} />
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Medya Önizleme Şeridi (Görsel + YouTube) */}
+              {(existingImages.length > 0 || newFiles.length > 0 || youtubeId) && (
                 <div className="mt-2 flex items-center gap-2 overflow-x-auto h-[56px] py-1 px-1 scrollbar-hide">
 
-                  {/* Existing Images */}
+                  {/* YouTube Küçük Önizleme */}
+                  {youtubeId && (
+                    <div className="relative flex-shrink-0 w-10 h-10 rounded-md overflow-hidden group border-2 border-red-400">
+                      <img
+                        src={`https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`}
+                        alt="YouTube"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <FaYoutube size={16} className="text-white drop-shadow-md" />
+                      </div>
+                      <button
+                        onClick={() => setYoutubeId('')}
+                        className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white"
+                      >
+                        <FiX size={14} />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Mevcut Görseller */}
                   {existingImages.map((url, index) => (
                     <div key={`existing-${index}`} className="relative flex-shrink-0 w-10 h-10 rounded-md overflow-hidden group border border-slate-200">
                       <img src={url} alt="existing" className="w-full h-full object-cover" />
@@ -258,11 +324,10 @@ const CreatePost = () => {
                     </div>
                   ))}
 
-                  {/* New Files */}
+                  {/* Yeni Dosyalar */}
                   {newFiles.map((file, index) => (
                     <div key={`new-${index}`} className="relative flex-shrink-0 w-10 h-10 rounded-md overflow-hidden group border border-blue-200 ring-1 ring-blue-100">
                       <img src={URL.createObjectURL(file)} alt="preview" className="w-full h-full object-cover" onLoad={(e) => URL.revokeObjectURL(e.target.src)} />
-                      {/* Yükleme sırasında spinner overlay */}
                       {uploading ? (
                         <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
                           <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin" />
@@ -280,7 +345,7 @@ const CreatePost = () => {
                 </div>
               )}
 
-              {/* Hidden File Input */}
+              {/* Gizli Dosya Input */}
               <input
                 type="file"
                 ref={fileInputRef}
@@ -307,18 +372,35 @@ const CreatePost = () => {
             ) : (
               /* ── Normal Durum ── */
               <div className="bg-slate-100/50 px-4 py-3 flex justify-between items-center border-t border-slate-100">
-                <button
-                  onClick={handleImageClick}
-                  className={`transition-colors p-2 rounded-full hover:bg-slate-200/50 ${newFiles.length > 0 || existingImages.length > 0 ? 'text-blue-600 bg-blue-50' : 'text-slate-400 hover:text-slate-600'}`}
-                  title="Resim Ekle"
-                >
-                  <FiImage size={24} />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={handleImageClick}
+                    className={`transition-colors p-2 rounded-full hover:bg-slate-200/50 ${newFiles.length > 0 || existingImages.length > 0 ? 'text-blue-600 bg-blue-50' : 'text-slate-400 hover:text-slate-600'}`}
+                    title="Resim Ekle"
+                  >
+                    <FiImage size={24} />
+                  </button>
+                  <button
+                    onClick={() => setShowYoutubeInput(prev => !prev)}
+                    className={`transition-colors p-2 rounded-full hover:bg-slate-200/50 ${
+                      youtubeId ? 'text-red-500 bg-red-50'
+                      : showYoutubeInput ? 'text-red-400 bg-red-50/50'
+                      : 'text-slate-400 hover:text-slate-600'
+                    }`}
+                    title="YouTube Video Ekle"
+                  >
+                    <FaYoutube size={24} />
+                  </button>
+                </div>
 
                 <button
                   onClick={handleSave}
-                  disabled={!content.trim() && existingImages.length === 0 && newFiles.length === 0}
-                  className={`transform transition-all duration-200 active:scale-90 ${content.trim() || existingImages.length > 0 || newFiles.length > 0 ? 'text-blue-600 hover:scale-110' : 'text-slate-300'}`}
+                  disabled={!content.trim() && existingImages.length === 0 && newFiles.length === 0 && !youtubeId}
+                  className={`transform transition-all duration-200 active:scale-90 ${
+                    content.trim() || existingImages.length > 0 || newFiles.length > 0 || youtubeId
+                      ? 'text-blue-600 hover:scale-110'
+                      : 'text-slate-300'
+                  }`}
                 >
                   <FiSend size={24} />
                 </button>

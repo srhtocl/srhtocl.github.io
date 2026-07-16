@@ -1,9 +1,26 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Cookies from "js-cookie";
 import { insertDocument, setDocument, subscribeToMessages } from "../services/db-methods";
 import { requestForToken } from "../services/notification";
 import toast from "react-hot-toast";
-import { getVisitorMetadata } from "../utils/telemetry";
+
+// --- Sabitler ---
+const MAX_MESSAGE_LENGTH = 2000;
+const MAX_MESSAGE_COUNT = 200;
+
+/**
+ * Kullanıcı girdisini temizler.
+ * - Kontrol karakterlerini siler (null byte, vs.)
+ * - Baştaki/sondaki boşlukları keser
+ * - Uzunluğu sınırlar
+ */
+const sanitizeInput = (text) => {
+    return text
+        // eslint-disable-next-line no-control-regex
+        .replace(/[\u0000-\u001F\u007F]/g, '') // Kontrol karakterleri
+        .trim()
+        .substring(0, MAX_MESSAGE_LENGTH);
+};
 
 export const useChat = (targetUserId = null) => {
     const [messages, setMessages] = useState([]);
@@ -17,7 +34,6 @@ export const useChat = (targetUserId = null) => {
         typeof Notification !== 'undefined' ? Notification.permission : 'default'
     );
 
-    // Ref to track if we've loaded initial messages (useful for notification logic if we move it back here later)
     const initialLoadComplete = useRef(false);
 
     useEffect(() => {
@@ -35,14 +51,20 @@ export const useChat = (targetUserId = null) => {
                     currentUser = (new Date()).getTime().toString(16);
                     Cookies.set('user', currentUser, { expires: 7 });
 
-                    const metadata = await getVisitorMetadata();
-                    const res = await insertDocument({ user: currentUser, messages: [], metadata });
+                    const res = await insertDocument({ user: currentUser, messages: [] });
                     if (!res.success) {
                         toast.error("Bağlantı hatası: Kullanıcı oluşturulamadı.");
                         console.error(res.error);
                     }
                 } else {
                     Cookies.set('user', currentUser, { expires: 7 });
+
+                    // If admin deleted the chat but visitor returns, recreate the document
+                    const setRes = await setDocument(currentUser, { user: currentUser });
+
+                    if (!setRes.success && setRes.error?.code === 'NOT_FOUND') {
+                        await insertDocument({ user: currentUser, messages: [] });
+                    }
                 }
 
                 // Only request automatically if ALREADY granted
@@ -72,15 +94,29 @@ export const useChat = (targetUserId = null) => {
         };
     }, [targetUserId]);
 
-    const sendMessage = async (text, asAdmin = false) => {
-        if (!text.trim() || sending || !user) return;
+    const sendMessage = useCallback(async (text, asAdmin = false) => {
+        const sanitized = sanitizeInput(text);
+
+        if (!sanitized || sending || !user) return;
+
+        // Uzunluk kontrolü
+        if (sanitized.length > MAX_MESSAGE_LENGTH) {
+            toast.error(`Mesaj çok uzun. Maksimum ${MAX_MESSAGE_LENGTH} karakter.`);
+            return;
+        }
+
+        // Mesaj sayısı kontrolü
+        if (!asAdmin && messages.length >= MAX_MESSAGE_COUNT) {
+            toast.error("Bu konuşma maksimum mesaj sayısına ulaştı.");
+            return;
+        }
 
         setSending(true);
 
         const newMessage = {
             user: asAdmin ? "admin" : user,
             time: (new Date()).getTime(),
-            data: text.trim()
+            data: sanitized
         };
 
         const updatedMessages = [...messages, newMessage];
@@ -89,20 +125,13 @@ export const useChat = (targetUserId = null) => {
         setMessages(updatedMessages);
 
         const payload = { user: user, messages: updatedMessages };
-        
-        // Sadece anonim kullanıcıysa metadatayı güncelle (Admin değilse)
-        if (!asAdmin) {
-            payload.metadata = await getVisitorMetadata();
-        }
 
         // Send to DB
         const response = await setDocument(user, payload);
 
         if (!response.success) {
-            // Revert optimistic update (Optional, currently simple override next render)
             toast.error("Mesaj gönderilemedi! Lütfen internet bağlantınızı kontrol edin.");
             console.error("Send Error:", response.error);
-            // We could remove the failed message from state here if we wanted strictly consistent UI
         } else {
             // Success Logic
             if (!asAdmin && !targetUserId && typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
@@ -112,7 +141,7 @@ export const useChat = (targetUserId = null) => {
         }
 
         setSending(false);
-    };
+    }, [messages, sending, user, targetUserId]);
 
     const enableNotifications = async () => {
         if (!user) return;
@@ -121,15 +150,7 @@ export const useChat = (targetUserId = null) => {
             return;
         }
 
-        const token = await requestForToken(targetUserId || user); // Admin uses specific ID usually, but here 'user' is the chat ID. 
-        // Wait, for Admin, we usually register 'admin_device'. 
-        // Logic split:
-        // If Visitor: user = chatID.
-        // If Admin viewing a chat: user = chatID (the visitor's ID). Admin TOKEN should be registered separately (e.g. in Layout or Header).
-
-        // Actually, enableNotifications in this hook context is mostly for the Visitor. 
-        // Admin enables notifications globally elsewhere (Header/Dashboard).
-        // But let's keep it robust.
+        const token = await requestForToken(targetUserId || user);
 
         setNotificationPermission(Notification.permission);
         if (token) toast.success("Bildirimler açıldı!");

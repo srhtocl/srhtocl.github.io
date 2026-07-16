@@ -101,19 +101,13 @@ async function getDocumentsByUsername(user) {
 
 async function setDocument(user, payload) {
     try {
-        // First, check if document exists to get the ID
-        // Note: calling our own service method effectively chains the response format logic
         const response = await getDocumentsByUsername(user);
 
         if (!response.success && response.error?.code === 'NOT_FOUND') {
-            // If not found, maybe we should create it? 
-            // Logic in useChat creates it via insertDocument first, so this might be strict update.
-            // But 'setDoc' usually implies "Create or Overwrite if ID known". 
-            // Since we query by 'user' field, we need the doc ID.
             return createResponse(false, null, { code: 'NOT_FOUND', message: 'Target document for user not found' });
         }
 
-        if (!response.success) return response; // Return the bubbling error
+        if (!response.success) return response;
 
         const docData = response.data;
         const docRef = doc(collectionRef, docData.id);
@@ -139,13 +133,10 @@ function subscribeToAllMessages(callback) {
             snapshot.forEach((doc) => {
                 messages.push({ ...doc.data(), docId: doc.id });
             });
-            callback(messages); // We could pass { success: true, data: messages } but UI expects array directly currently.
-            // Changing subscription signature is risky for Phase 2. Let's keep data-only for now or wrap it?
-            // Let's keep it simple for subscriptions: Just Data.
+            callback(messages);
         },
         (error) => {
             console.error("Subscription Error (All):", error);
-            // Optionally call callback with null or specific error state if UI supports it
         }
     );
 }
@@ -158,15 +149,8 @@ function subscribeToMessages(user, callback) {
     return onSnapshot(q,
         (snapshot) => {
             if (!snapshot.empty) {
-                callback({ success: true, ...snapshot.docs[0].data() }); // Merging success flag might be useful? 
-                // Wait, useChat expects `data.messages`.
-                // Let's keep receiving pure data structure to minimize "Read" refactor impact, 
-                // but we fixed "Write" operations which are the main source of errors.
-                // Actually, let's keep it pure data for subscriptions to match `useChat` expectations 
-                // unless we want to rewrite useChat subscription handler too.
                 callback(snapshot.docs[0].data());
             } else {
-                // Document deleted or not found
                 callback(null);
             }
         },

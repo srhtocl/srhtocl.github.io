@@ -1,31 +1,78 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Mesajlar (chats) herkese açık (Anonim yazma/okuma için)
-    match /chats/{document=**} {
-      allow read, write: if true;
+
+    // --- Yardımcı Fonksiyonlar ---
+
+    // Admin kontrolü: auth null değilse ve UID eşleşiyorsa
+    function isAdmin() {
+      return request.auth != null
+          && request.auth.uid == "2t2Fg2aX8ePpfhsDAWoYEosDcmv1";
+    }
+
+    // Yeni mesajın içeriğinin geçerli olup olmadığını kontrol eder
+    function isValidMessage(msg) {
+      return msg.keys().hasAll(['user', 'time', 'data'])
+          && msg.data is string
+          && msg.data.size() > 0
+          && msg.data.size() <= 2000;
+    }
+
+    // messages array boyutunun sınır içinde olup olmadığını kontrol eder
+    function hasValidMessageCount(data) {
+      return !(data.keys().hasAny(['messages']))
+          || data.messages.size() <= 200;
+    }
+
+    // Mesajlar (chats)
+    // Anonim kullanıcılar Firebase Auth kullanmadığı için request.auth null olur.
+    // create: Yalnızca boş mesaj dizisiyle belge oluşturulabilir.
+    // read  : Herkese açık (ziyaretçi kendi mesajlarını görebilmeli)
+    // update: Mesaj sayısı ve uzunluk sınırı kontrol edilir
+    // delete: Sadece Admin
+    match /chats/{chatId} {
+      allow read: if true;
+
+      allow create: if request.resource.data.keys().hasAll(['user', 'messages'])
+                   && request.resource.data.user is string
+                   && request.resource.data.user.size() > 0
+                   && request.resource.data.user.size() <= 100
+                   && request.resource.data.messages is list
+                   && request.resource.data.messages.size() == 0;
+
+      allow update: if hasValidMessageCount(request.resource.data)
+                   && (
+                     !request.resource.data.keys().hasAny(['messages'])
+                     || request.resource.data.messages.size() == 0
+                     || isValidMessage(
+                          request.resource.data.messages[
+                            request.resource.data.messages.size() - 1
+                          ]
+                        )
+                   );
+
+      allow delete: if isAdmin();
     }
 
     // 1. Admin Profil Bilgileri (Herkes görebilir, sadece Admin değiştirebilir)
     match /admin/profile {
       allow read: if true;
-      allow write: if request.auth.uid == "2t2Fg2aX8ePpfhsDAWoYEosDcmv1";
+      allow write: if isAdmin();
     }
 
     // 2. Admin Bildirim Tokenı (Sadece Admin okuyabilir ve yazabilir)
     match /admin/notifications {
-      allow read, write: if request.auth.uid == "2t2Fg2aX8ePpfhsDAWoYEosDcmv1";
+      allow read, write: if isAdmin();
     }
 
     // Blog (post) tamamen ÖZEL
     match /post/{document=**} {
-      allow read, write: if request.auth.uid == "2t2Fg2aX8ePpfhsDAWoYEosDcmv1";
+      allow read, write: if isAdmin();
     }
 
     // Kategoriler (categories) tamamen ÖZEL (Sadece Admin)
     match /categories/{document=**} {
-      allow read, write: if request.auth.uid == "2t2Fg2aX8ePpfhsDAWoYEosDcmv1";
+      allow read, write: if isAdmin();
     }
   }
 }
