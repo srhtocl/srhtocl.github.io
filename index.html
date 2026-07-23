@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="tr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Marck+Script&family=Ubuntu:wght@300;400;500;700&display=swap"
+    rel="stylesheet">
+  <meta name="theme-color" content="#ffffff" />
+  <!-- Content Security Policy: Hangi kaynaklardan içerik yüklenebileceğini kısıtlar (XSS koruması) -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com;
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+    font-src 'self' https://fonts.gstatic.com;
+    img-src 'self' data: blob: https://firebasestorage.googleapis.com https://storage.googleapis.com https://pbs.twimg.com https://img.youtube.com;
+    connect-src 'self'
+      https://*.googleapis.com
+      https://*.firebaseio.com
+      wss://*.firebaseio.com
+      https://fcm.googleapis.com
+      https://firebaseinstallations.googleapis.com
+      https://identitytoolkit.googleapis.com
+      https://securetoken.googleapis.com;
+    worker-src 'self' blob:;
+    manifest-src 'self';
+    frame-src https://srhtocl-4b648.firebaseapp.com https://accounts.google.com https://www.youtube.com https://www.youtube-nocookie.com;
+    object-src 'none';
+  " />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="./pwa-192x192.png" />
+  <title>SrhtOcl</title>
+  <script type="module" crossorigin src="./assets/index-DfU7RUtj.js"></script>
+  <link rel="modulepreload" crossorigin href="./assets/react-vendor-BXcgI5wA.js">
+  <link rel="modulepreload" crossorigin href="./assets/firebase-vendor-CP0Xty1K.js">
+  <link rel="stylesheet" crossorigin href="./assets/index-ux7i_TMx.css">
+<link rel="manifest" href="./manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="./registerSW.js"></script></head>
+
+<body>
+  <div id="root"></div>
+</body>
+
+</html>
