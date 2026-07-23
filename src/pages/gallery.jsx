@@ -14,11 +14,10 @@
 import React, { useState, useEffect } from 'react';
 import { FiTrash2, FiX, FiChevronLeft, FiChevronRight, FiShare2, FiUserCheck, FiMoreVertical } from 'react-icons/fi';
 import { useAuth } from '../context/auth-context';
+import { useProfileContext } from '../context/profile-context';
 import { useGallery } from '../hooks/useGallery';
 import { useNavigate } from 'react-router-dom';
-import { doc, setDoc, getDoc } from "firebase/firestore";
-import { db, auth } from "../services/firebase";
-import { updateProfile } from "firebase/auth";
+
 import toast from 'react-hot-toast';
 
 const Gallery = () => {
@@ -26,6 +25,7 @@ const Gallery = () => {
     const [selectedImage, setSelectedImage] = useState(null);
     const [activeMenu, setActiveMenu] = useState(null);
     const { isAdmin } = useAuth();
+    const { updateProfileData, profile } = useProfileContext();
     const navigate = useNavigate();
 
     const handleDelete = async (imageItem) => {
@@ -47,34 +47,14 @@ const Gallery = () => {
         e.stopPropagation();
         if (!window.confirm("Bu görseli profil resminiz yapmak istiyor musunuz?")) return;
         try {
-            const adminProfileRef = doc(db, "admin", "profile");
-
-            // Mevcut profili çek, photoURLs dizisini al
-            const docSnap = await getDoc(adminProfileRef);
-            const existingData = docSnap.exists() ? docSnap.data() : {};
-
-            let currentURLs = [];
-            if (Array.isArray(existingData.photoURLs) && existingData.photoURLs.length > 0) {
-                currentURLs = existingData.photoURLs;
-            } else if (existingData.photoURL) {
-                currentURLs = [existingData.photoURL];
-            }
-
-            // Seçilen URL'yi başa taşı (zaten listede varsa önce kaldır, yoksa ekle)
+            const currentURLs = profile?.photoURLs || [];
             const filtered = currentURLs.filter(u => u !== imageItem.url);
             const newPhotoURLs = [imageItem.url, ...filtered];
 
-            await setDoc(adminProfileRef, {
-                photoURLs: newPhotoURLs,
-                photoURL: imageItem.url, // geriye dönük uyumluluk
-                updatedAt: new Date()
-            }, { merge: true });
-
-            if (auth.currentUser) {
-                await updateProfile(auth.currentUser, { photoURL: imageItem.url });
-            }
-            toast.success("Profil resmi güncellendi! Değişikliklerin her yerde görünmesi için sayfa yenileniyor...");
-            setTimeout(() => window.location.reload(), 1500);
+            await updateProfileData({ orderedPhotoURLs: newPhotoURLs, newBio: profile.bio });
+            
+            // Context updateProfileData already shows a toast.
+            // No page reload is needed anymore!
         } catch (error) {
             console.error("Profil resmi güncellenemedi:", error);
             toast.error("Hata: " + error.message);

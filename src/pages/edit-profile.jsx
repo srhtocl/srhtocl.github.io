@@ -36,6 +36,8 @@ const EditProfile = () => {
 
     // Form Local State
     const [bioInput, setBioInput] = useState('');
+    const [displayNameInput, setDisplayNameInput] = useState('');
+    const [usernameInput, setUsernameInput] = useState('');
     const [photoList, setPhotoList] = useState([]);
     const [isGalleryOpen, setIsGalleryOpen] = useState(false);
 
@@ -44,6 +46,8 @@ const EditProfile = () => {
     useEffect(() => {
         if (profile) {
             setBioInput(profile.bio || '');
+            setDisplayNameInput(profile.displayName || '');
+            setUsernameInput(profile.username || '');
             setPhotoList(
                 (profile.photoURLs || []).map(url => ({ url, isNew: false }))
             );
@@ -66,7 +70,15 @@ const EditProfile = () => {
             toast.error('Fotoğraf sayısı çift olamaz (1, 3, 5 veya 7 olmalı).');
             return;
         }
-        setPhotoList(selectedUrls.map(url => ({ url })));
+        setPhotoList(prev => {
+            const currentUrls = prev.map(p => p.url);
+            // Keep items that are still selected, preserving their current order
+            const kept = prev.filter(p => selectedUrls.includes(p.url));
+            // Add new items from selectedUrls that were not in prev
+            const newUrls = selectedUrls.filter(u => !currentUrls.includes(u));
+            const added = newUrls.map(url => ({ url, isNew: false })); // They are already in gallery
+            return [...kept, ...added];
+        });
     };
 
     // ── Sürükle-Bırak ile Sıralama ─────────────────────────────────────────
@@ -93,9 +105,10 @@ const EditProfile = () => {
         const orderedUrls = photoList.map(p => p.url);
 
         const success = await updateProfileData({
-            newFiles: [],
             orderedPhotoURLs: orderedUrls,
-            newBio: bioInput
+            newBio: bioInput,
+            newDisplayName: displayNameInput,
+            newUsername: usernameInput
         });
 
         if (success) setTimeout(() => navigate(0), 800);
@@ -145,6 +158,32 @@ const EditProfile = () => {
                 </section>
 
 
+                {/* ── Bölüm 2: Kişisel Bilgiler ────────────────────────── */}
+                <section className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex-1">
+                        <label className="block text-xs font-bold text-slate-400 mb-1.5 ml-1">AD SOYAD VEYA MARKA</label>
+                        <input
+                            type="text"
+                            value={displayNameInput}
+                            onChange={e => setDisplayNameInput(e.target.value)}
+                            placeholder="Ad Soyad"
+                            className="w-full bg-white border border-slate-200 rounded-xl py-3 px-4 text-slate-800 outline-none focus:border-slate-700 focus:ring-2 focus:ring-slate-200 transition-all font-medium placeholder:text-slate-300 shadow-sm"
+                        />
+                    </div>
+                    <div className="flex-1">
+                        <label className="block text-xs font-bold text-slate-400 mb-1.5 ml-1">KULLANICI ADI</label>
+                        <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">@</span>
+                            <input
+                                type="text"
+                                value={usernameInput}
+                                onChange={e => setUsernameInput(e.target.value.toLowerCase().replace(/\s+/g, ''))}
+                                placeholder="kullaniciadi"
+                                className="w-full bg-white border border-slate-200 rounded-xl py-3 pl-9 pr-4 text-slate-800 outline-none focus:border-slate-700 focus:ring-2 focus:ring-slate-200 transition-all font-medium placeholder:text-slate-300 shadow-sm"
+                            />
+                        </div>
+                    </div>
+                </section>
 
                 {/* ── Bölüm 3: Biyografi ───────────────────────────────── */}
                 <section>
@@ -184,7 +223,7 @@ const EditProfile = () => {
                 isOpen={isGalleryOpen}
                 onClose={() => setIsGalleryOpen(false)}
                 onConfirm={handleGalleryConfirm}
-                alreadySelected={photoList.filter(p => !p.isNew).map(p => p.url)}
+                alreadySelected={photoList.map(p => p.url)}
             />
 
         </div>

@@ -18,7 +18,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
-import { FiMoreVertical, FiEdit2, FiTrash2, FiLink, FiCopy, FiArchive } from 'react-icons/fi';
+import { FiMoreVertical, FiEdit2, FiTrash2, FiCopy, FiArchive, FiEdit3 } from 'react-icons/fi';
 import { deleteDocument, updatePostStatus } from '../services/post-methods';
 import { useAuth } from '../context/auth-context';
 import PostImages from './post-images';
@@ -49,19 +49,19 @@ const Post = ({ post, onDelete, onUnarchive }) => {
     <div className="bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden group">
 
       {/* 1. Header Area */}
-      <div className="px-4 py-3 flex justify-between items-start bg-slate-100/50 border-b border-slate-50">
+      <div className="px-4 h-14 flex justify-between items-center bg-slate-100/50 border-b border-slate-50">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden ring-2 ring-slate-50">
+          <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden ring-2 ring-slate-50 shrink-0">
             <img
-              src={profile.photoURL || null}
-              alt={profile.displayName || undefined}
+              src={(profile?.photoURLs && profile.photoURLs.length > 0) ? profile.photoURLs[0] : null}
+              alt={profile?.displayName || undefined}
               className="w-full h-full object-cover"
             />
           </div>
-          <div className="flex flex-col">
-            <h3 className="text-slate-800 font-bold text-sm font-['Ubuntu']">{profile.displayName}</h3>
-            <div className="flex items-center gap-2 text-xs font-['Ubuntu']">
-              <span className="text-slate-400">
+          <div className="flex flex-col justify-center">
+            <h3 className="text-slate-800 font-bold text-sm leading-tight font-['Ubuntu']">{profile.displayName}</h3>
+            <div className="flex items-center gap-2 text-xs text-slate-400 font-['Ubuntu'] mt-0.5 leading-none">
+              <span>
                 {post.timestamp?.seconds
                   ? new Date(post.timestamp.seconds * 1000).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
                   : 'Tarih yok'}
@@ -73,7 +73,7 @@ const Post = ({ post, onDelete, onUnarchive }) => {
         {/* Menu Button (Only for Admin) */}
         {isAdmin && (
           <div className="relative">
-            <button onClick={() => setShowMenu(!showMenu)} className="p-2 text-slate-300 hover:text-slate-500 transition-colors">
+            <button onClick={() => setShowMenu(!showMenu)} className="p-2 -mr-2 text-slate-300 hover:text-slate-500 transition-colors">
               <FiMoreVertical size={20} />
             </button>
 
@@ -166,17 +166,21 @@ const Post = ({ post, onDelete, onUnarchive }) => {
       </div>
 
       {/* 3. Footer Area (Visual Actions) */}
-      <div className="bg-slate-100/50 px-4 py-3 flex justify-between items-center border-t border-slate-100 min-h-[3.5rem]">
+      <div className="bg-slate-100/50 px-4 h-14 flex justify-between items-center border-t border-slate-100">
 
-        {/* Only Link Button Remains */}
-        <button className="flex items-center gap-2 text-slate-400 hover:text-blue-500 transition-colors group" title="Bağlantı (Yakında)">
-          <FiLink size={20} className="group-hover:scale-110 transition-transform" />
-        </button>
+        {post.updated_at && (!post.timestamp || post.updated_at.seconds - post.timestamp.seconds > 60) ? (
+            <div className="flex items-center gap-1.5 text-slate-400 text-xs font-medium leading-none h-6" title="Son güncellenme">
+              <FiEdit3 size={14} />
+              <span>{new Date(post.updated_at.seconds * 1000).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
+        ) : (
+            <div className="h-6 w-px pointer-events-none opacity-0"></div> // Gizli spacer: İçeriğin her zaman 24px (h-6) olmasını garantiler
+        )}
 
         {post.category && (
           <button
             onClick={() => navigate(`/posts?category=${encodeURIComponent(post.category)}`)}
-            className="bg-white text-slate-500 px-3 py-1 text-sm rounded-md border border-slate-200 font-medium shadow-sm hover:bg-slate-50 transition-colors"
+            className="bg-white text-slate-500 px-3 py-1 text-sm leading-none rounded-md border border-slate-200 font-medium shadow-sm hover:bg-slate-50 transition-colors"
           >
             {post.category}
           </button>

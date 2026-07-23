@@ -1,4 +1,4 @@
-import { ref, listAll, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, listAll, getDownloadURL, deleteObject, uploadBytes } from 'firebase/storage';
 import { storage } from './firebase';
 
 /**
@@ -36,4 +36,17 @@ export const fetchAllImages = async () => {
  */
 export const deleteImageFromStorage = async (imageRef) => {
     await deleteObject(imageRef);
+};
+
+/**
+ * Uploads a single image to the 'profile/' directory in Firebase Storage.
+ * @param {File} file - The file to upload
+ * @returns {Promise<Object>} The uploaded image object { url, ref, name }
+ */
+export const uploadImageToGallery = async (file) => {
+    const fileName = `admin_profile_${Date.now()}_${file.name}`;
+    const storageRef = ref(storage, `profile/${fileName}`);
+    const snapshot = await uploadBytes(storageRef, file);
+    const url = await getDownloadURL(snapshot.ref);
+    return { url, ref: snapshot.ref, name: fileName };
 };

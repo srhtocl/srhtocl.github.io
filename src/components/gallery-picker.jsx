@@ -10,15 +10,38 @@
  *   alreadySelected {string[]}   - Zaten profilde olan URL'ler (başlangıçta seçili gösterilir)
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
-import { FiX, FiCheck, FiLoader } from 'react-icons/fi';
-import { fetchAllImages } from '../services/gallery-service';
+import { FiX, FiCheck, FiLoader, FiUploadCloud } from 'react-icons/fi';
+import { fetchAllImages, uploadImageToGallery } from '../services/gallery-service';
+import { toast } from 'react-hot-toast';
 
 const GalleryPicker = ({ isOpen, onClose, onConfirm, alreadySelected = [] }) => {
     const [images, setImages] = useState([]);
     const [selected, setSelected] = useState(new Set());
     const [loading, setLoading] = useState(false);
+
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = useRef(null);
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        try {
+            const newImage = await uploadImageToGallery(file);
+            setImages(prev => [newImage, ...prev]);
+            setSelected(prev => new Set([...prev, newImage.url]));
+            toast.success("Fotoğraf galeriye yüklendi ve seçildi!");
+        } catch (error) {
+            console.error("Yükleme hatası:", error);
+            toast.error("Fotoğraf yüklenemedi: " + error.message);
+        } finally {
+            setIsUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
 
     useEffect(() => {
         if (!isOpen) return;
@@ -116,15 +139,25 @@ const GalleryPicker = ({ isOpen, onClose, onConfirm, alreadySelected = [] }) => 
 
                 {/* Footer */}
                 <div className="px-5 py-4 border-t border-slate-100 flex gap-3 flex-shrink-0 bg-white">
+                    <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        onChange={handleFileUpload} 
+                        accept="image/*" 
+                        className="hidden" 
+                    />
                     <button
-                        onClick={onClose}
-                        className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-medium text-sm hover:bg-slate-50 transition-colors"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
+                        className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-medium text-sm hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
                     >
-                        Vazgeç
+                        {isUploading ? <FiLoader className="animate-spin" /> : <FiUploadCloud size={18} />}
+                        {isUploading ? 'Yükleniyor...' : 'Yeni Yükle'}
                     </button>
                     <button
                         onClick={handleConfirm}
-                        className="flex-1 py-3 rounded-xl bg-slate-900 text-white font-semibold text-sm hover:bg-slate-700 transition-colors"
+                        disabled={isUploading}
+                        className="flex-1 py-3 rounded-xl bg-slate-900 text-white font-semibold text-sm hover:bg-slate-700 transition-colors disabled:opacity-50"
                     >
                         {selected.size > 0 ? `${selected.size} Fotoğrafı Uygula` : 'Seçimi Temizle'}
                     </button>

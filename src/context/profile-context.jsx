@@ -13,8 +13,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { updateProfile as updateFirebaseAuthProfile } from "firebase/auth";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { auth, db, storage } from "../services/firebase";
+import { auth, db } from "../services/firebase";
 import { insertDocument } from "../services/post-methods";
 import { toast } from "react-hot-toast";
 
@@ -32,7 +31,6 @@ export const ProfileProvider = ({ children }) => {
     });
     const [profileLoading, setProfileLoading] = useState(true);
 
-    // ── Firestore'dan profil verisini çek ─────────────────────────────────
     const fetchProfile = useCallback(async () => {
         setProfileLoading(true);
         try {
@@ -42,8 +40,6 @@ export const ProfileProvider = ({ children }) => {
                 const data = docSnap.data();
 
                 // Geriye dönük uyumluluk:
-                // Firestore'da eski "photoURL" (tekil) varsa diziyi ondan oluştur.
-                // Yeni "photoURLs" (çoğul dizi) varsa onu kullan.
                 let resolvedPhotoURLs = [];
                 if (Array.isArray(data.photoURLs) && data.photoURLs.length > 0) {
                     resolvedPhotoURLs = data.photoURLs;
@@ -54,7 +50,8 @@ export const ProfileProvider = ({ children }) => {
                 setProfile({
                     photoURLs: resolvedPhotoURLs,
                     bio: data.bio || "",
-                    displayName: data.displayName || ""
+                    displayName: data.displayName || data.name || "", // We will merge auth user later if needed
+                    username: data.username || ""
                 });
             }
         } catch (error) {
@@ -68,39 +65,38 @@ export const ProfileProvider = ({ children }) => {
         fetchProfile();
     }, [fetchProfile]);
 
+    // Google Auth verisi (user) gecikmeli gelebileceği için, eğer veritabanında isim yoksa 
+    // ve auth.currentUser sonradan yüklenirse ismi Google'dan al.
+    useEffect(() => {
+        if (auth.currentUser?.displayName && !profile.displayName) {
+            setProfile(prev => ({
+                ...prev,
+                displayName: prev.displayName || auth.currentUser.displayName
+            }));
+        }
+    }, [profile.displayName]); // We check whenever profile changes, and if it's empty, we try auth.currentUser. But better yet, let's just listen to auth state changes in useAuth.
+
+
     /**
      * Profil güncelleme işlemini başlatır.
      * Storage upload → Firestore yazma → Auth profil güncelleme → Auto-post.
      *
      * @param {object} params
-     * @param {File[]}   params.newFiles          - Yeni yüklenecek dosyalar
      * @param {string[]} params.orderedPhotoURLs  - Kullanıcının sıraladığı nihai URL listesi
      * @param {string}   params.newBio            - Yeni biyografi
+     * @param {string}   params.newDisplayName    - Yeni ad soyad
+     * @param {string}   params.newUsername       - Yeni kullanıcı adı
      * @returns {Promise<boolean>}
      */
-    const updateProfileData = useCallback(async ({ newFiles = [], orderedPhotoURLs = [], newBio }) => {
+    const updateProfileData = useCallback(async ({ orderedPhotoURLs = [], newBio, newDisplayName, newUsername }) => {
         try {
-            // 1. Yeni dosyaları Storage'a yükle; blob: URL'lerini gerçek URL'lerle değiştir
-            const uploadedMap = new Map(); // blob URL → download URL
-            for (const file of newFiles) {
-                const blobUrl = URL.createObjectURL(file);
-                const storageRef = ref(storage, `profile/admin_profile_${Date.now()}_${file.name}`);
-                const snapshot = await uploadBytes(storageRef, file);
-                const downloadURL = await getDownloadURL(snapshot.ref);
-                uploadedMap.set(blobUrl, downloadURL);
-            }
-
-            // 2. orderedPhotoURLs içindeki blob: URL'lerini gerçek URL'lerle değiştir
-            const finalPhotoURLs = orderedPhotoURLs.map(url =>
-                uploadedMap.has(url) ? uploadedMap.get(url) : url
-            );
-
+            const finalPhotoURLs = orderedPhotoURLs;
             const coverPhotoURL = finalPhotoURLs[0] || '';
-            const hadNewFiles = newFiles.length > 0;
+            const coverPhotoChanged = profile.photoURLs[0] !== coverPhotoURL;
             const bioChanged = newBio !== profile.bio;
 
             // 3. Firebase Auth profilini güncelle (kapak fotoğrafı)
-            if (auth.currentUser && coverPhotoURL) {
+            if (auth.currentUser && coverPhotoURL && coverPhotoChanged) {
                 await updateFirebaseAuthProfile(auth.currentUser, { photoURL: coverPhotoURL });
             }
 
@@ -110,13 +106,15 @@ export const ProfileProvider = ({ children }) => {
                 photoURLs: finalPhotoURLs,
                 photoURL: coverPhotoURL,  // geriye dönük uyumluluk
                 bio: newBio,
+                displayName: newDisplayName !== undefined ? newDisplayName : profile.displayName,
+                username: newUsername !== undefined ? newUsername : profile.username,
                 updatedAt: new Date()
             }, { merge: true });
 
             // 5. AUTO-POST Mantığı
-            if (hadNewFiles) {
+            if (coverPhotoChanged && coverPhotoURL) {
                 const postResult = await insertDocument({
-                    content: newBio,
+                    content: newBio || "Yeni profil fotoğrafım!",
                     images: [coverPhotoURL],
                     image_url: coverPhotoURL,
                     timestamp: new Date()
@@ -136,7 +134,9 @@ export const ProfileProvider = ({ children }) => {
             setProfile(prev => ({
                 ...prev,
                 photoURLs: finalPhotoURLs,
-                bio: newBio
+                bio: newBio !== undefined ? newBio : prev.bio,
+                displayName: newDisplayName !== undefined ? newDisplayName : prev.displayName,
+                username: newUsername !== undefined ? newUsername : prev.username
             }));
 
             toast.success("Profil başarıyla güncellendi!");
@@ -147,7 +147,7 @@ export const ProfileProvider = ({ children }) => {
             toast.error("Hata: " + error.message);
             return false;
         }
-    }, [profile.bio]);
+    }, [profile.bio, profile.photoURLs]);
 
     return (
         <ProfileContext.Provider value={{

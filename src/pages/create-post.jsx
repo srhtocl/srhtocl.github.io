@@ -198,17 +198,17 @@ const CreatePost = () => {
         <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
 
           {/* 1. Header Area */}
-          <div className="bg-slate-100/50 px-4 py-3 flex items-center gap-3 border-b border-slate-100">
-            <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden">
+          <div className="bg-slate-100/50 px-4 h-14 flex items-center gap-3 border-b border-slate-100">
+            <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden shrink-0">
               <img
-                src={profile.photoURL || null}
-                alt={profile.displayName || undefined}
+                src={(profile?.photoURLs && profile.photoURLs.length > 0) ? profile.photoURLs[0] : null}
+                alt={profile?.displayName || undefined}
                 className="w-full h-full object-cover"
               />
             </div>
-            <div className="flex flex-col">
-              <span className="text-slate-700 font-bold text-sm font-['Ubuntu']">{profile.displayName}</span>
-              <span className="text-slate-400 text-xs">{new Date().toLocaleDateString('tr-TR')}</span>
+            <div className="flex flex-col justify-center">
+              <span className="text-slate-700 font-bold text-sm leading-tight font-['Ubuntu']">{profile.displayName}</span>
+              <span className="text-slate-400 text-xs mt-0.5 leading-none">{new Date().toLocaleDateString('tr-TR')}</span>
             </div>
           </div>
 
@@ -359,8 +359,8 @@ const CreatePost = () => {
             {/* 3. Footer Area (Actions) */}
             {uploading ? (
               /* ── Yükleme Durumu ── */
-              <div className="bg-slate-100/50 px-4 py-3 border-t border-slate-100 flex flex-col gap-2">
-                <div className="flex items-center justify-between">
+              <div className="bg-slate-100/50 px-4 h-14 border-t border-slate-100 flex flex-col justify-center gap-2">
+                <div className="flex items-center justify-between leading-none">
                   <span className="text-xs text-slate-500 font-['Ubuntu'] font-medium animate-pulse">
                     {newFiles.length > 0 ? `${newFiles.length} görsel yükleniyor...` : 'Kaydediliyor...'}
                   </span>
@@ -371,7 +371,7 @@ const CreatePost = () => {
               </div>
             ) : (
               /* ── Normal Durum ── */
-              <div className="bg-slate-100/50 px-4 py-3 flex justify-between items-center border-t border-slate-100">
+              <div className="bg-slate-100/50 px-4 h-14 flex justify-between items-center border-t border-slate-100">
                 <div className="flex items-center gap-1">
                   <button
                     onClick={handleImageClick}
@@ -396,7 +396,7 @@ const CreatePost = () => {
                 <button
                   onClick={handleSave}
                   disabled={!content.trim() && existingImages.length === 0 && newFiles.length === 0 && !youtubeId}
-                  className={`transform transition-all duration-200 active:scale-90 ${
+                  className={`transform transition-all duration-200 active:scale-90 p-2 ${
                     content.trim() || existingImages.length > 0 || newFiles.length > 0 || youtubeId
                       ? 'text-blue-600 hover:scale-110'
                       : 'text-slate-300'
