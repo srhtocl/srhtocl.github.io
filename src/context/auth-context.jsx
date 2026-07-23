@@ -19,12 +19,13 @@ export function AuthProvider({ children }) {
 	const [user, setUser] = useState(null);
 	const [loading, setLoading] = useState(true);
 
+	const [isAdmin, setIsAdmin] = useState(false);
+
 	const handleLogout = async () => {
 		try {
 			await logoutUser();
 			setUser(null);
-			// setLoading(false) gereksiz olabilir çünkü onAuthStateChanged zaten tetiklenecek
-			// ama güvenli tarafta kalmak için state update yapılabilir.
+			setIsAdmin(false);
 		} catch (error) {
 			console.error("Çıkış hatası:", error);
 		}
@@ -32,7 +33,13 @@ export function AuthProvider({ children }) {
 
 	useEffect(() => {
 		// Servis katmanından dinleyiciyi başlat
-		const unsubscribe = subscribeToAuthChanges((currentUser) => {
+		const unsubscribe = subscribeToAuthChanges(async (currentUser) => {
+			if (currentUser) {
+				const idTokenResult = await currentUser.getIdTokenResult();
+				setIsAdmin(!!idTokenResult.claims.admin);
+			} else {
+				setIsAdmin(false);
+			}
 			setUser(currentUser);
 			setLoading(false);
 		});
@@ -41,7 +48,7 @@ export function AuthProvider({ children }) {
 		return () => unsubscribe();
 	}, []);
 
-	const value = { user, setUser, loading, setLoading, handleLogout };
+	const value = { user, isAdmin, setUser, loading, setLoading, handleLogout };
 
 	return (
 		<AuthContext.Provider value={value}>

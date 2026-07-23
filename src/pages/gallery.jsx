@@ -25,11 +25,8 @@ const Gallery = () => {
     const { images, loading, removeImage } = useGallery();
     const [selectedImage, setSelectedImage] = useState(null);
     const [activeMenu, setActiveMenu] = useState(null);
-    const { user } = useAuth();
+    const { isAdmin } = useAuth();
     const navigate = useNavigate();
-
-    // Admin Check
-    const isAdmin = user && user.uid === "2t2Fg2aX8ePpfhsDAWoYEosDcmv1";
 
     const handleDelete = async (imageItem) => {
         if (!window.confirm("Bu resmi kalıcı olarak silmek istiyor musunuz?")) return;

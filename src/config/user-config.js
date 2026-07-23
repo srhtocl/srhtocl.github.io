@@ -4,7 +4,10 @@
  * Profil bilgileri ve içerik verisi için kaynak Firestore'dur — bu dosyada tutulmaz.
  */
 export const userConfig = {
-    // Admin Firebase UID — UI seviyesinde admin menüsünü göster/gizle için kullanılır.
-    // Asıl yetki kontrolü Firestore Security Rules'da (sunucu tarafında) yapılmaktadır.
-    adminUID: import.meta.env.VITE_ADMIN_UID,
+    displayName: "Serhat Öcal",
+    bio: "Hi, there! I am a full-stack developer based in Turkey. 👨‍💻",
+    twitterUrl: "https://twitter.com/srhtocl",
+    githubUrl: "https://github.com/srhtocl",
+    linkedinUrl: "https://linkedin.com/in/srhtocl",
+    themeColor: "#0f172a",
 };

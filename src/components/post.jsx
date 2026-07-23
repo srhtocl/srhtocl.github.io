@@ -22,13 +22,12 @@ import { FiMoreVertical, FiEdit2, FiTrash2, FiLink, FiCopy, FiArchive } from 're
 import { deleteDocument, updatePostStatus } from '../services/post-methods';
 import { useAuth } from '../context/auth-context';
 import PostImages from './post-images';
-import { userConfig } from '../config/user-config';
 import { useProfileContext } from '../context/profile-context';
 
 const Post = ({ post, onDelete, onUnarchive }) => {
   const [showMenu, setShowMenu] = useState(false);
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { isAdmin } = useAuth();
   const { profile } = useProfileContext();
 
   const handleDelete = async () => {
@@ -72,7 +71,7 @@ const Post = ({ post, onDelete, onUnarchive }) => {
         </div>
 
         {/* Menu Button (Only for Admin) */}
-        {user && user.uid === userConfig.adminUID && (
+        {isAdmin && (
           <div className="relative">
             <button onClick={() => setShowMenu(!showMenu)} className="p-2 text-slate-300 hover:text-slate-500 transition-colors">
               <FiMoreVertical size={20} />

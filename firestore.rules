@@ -4,10 +4,9 @@ service cloud.firestore {
 
     // --- Yardımcı Fonksiyonlar ---
 
-    // Admin kontrolü: auth null değilse ve UID eşleşiyorsa
+    // Admin kontrolü: auth null değilse ve token içinde admin=true claim'i varsa
     function isAdmin() {
-      return request.auth != null
-          && request.auth.uid == "2t2Fg2aX8ePpfhsDAWoYEosDcmv1";
+      return request.auth != null && request.auth.token.admin == true;
     }
 
     // Yeni mesajın içeriğinin geçerli olup olmadığını kontrol eder
