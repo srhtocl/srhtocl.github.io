@@ -1,6 +1,7 @@
-import React, { Suspense } from "react";
+import React from "react";
 import { createHashRouter } from "react-router-dom";
 import ProtectedRoute from "./protected-route";
+import { Loadable } from "./loadable";
 
 // Lazy Load Components
 const Root = React.lazy(() => import("../pages/root"));
@@ -18,24 +19,6 @@ const Gallery = React.lazy(() => import("../pages/gallery"));
 const ManageCategories = React.lazy(() => import("../pages/manage-categories"));
 const Archive = React.lazy(() => import("../pages/archive"));
 
-// Loading Fallback
-const LoadingScreen = () => (
-    <div className="h-screen w-screen flex items-center justify-center bg-slate-50">
-        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
-    </div>
-);
-
-// --- Kod Bölme (Code-Splitting) ve Tembel Yükleme (Lazy Loading) ---
-// Loadable, bir bileşeni parametre olarak alan ve onu React.Suspense ile saran bir fonksiyondur (Higher-Order Component).
-// Suspense, içine aldığı bileşenlerin (bu durumda lazy ile yüklenen sayfaların) yüklenmesini bekler.
-// Yükleme sırasında, `fallback` prop'u olarak verilen `LoadingScreen` bileşenini ekranda gösterir.
-// Bu yapı, her sayfanın kodunun sadece o sayfaya gidildiğinde indirilmesini sağlar,
-// böylece uygulamanın başlangıç yükleme süresi kısalır ve performans artar.
-const Loadable = (Component) => (
-    <Suspense fallback={<LoadingScreen />}>
-        <Component />
-    </Suspense>
-);
 
 const router = createHashRouter([
     {

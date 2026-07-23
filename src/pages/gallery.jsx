@@ -16,7 +16,7 @@ import { FiTrash2, FiX, FiChevronLeft, FiChevronRight, FiShare2, FiUserCheck, Fi
 import { useAuth } from '../context/auth-context';
 import { useGallery } from '../hooks/useGallery';
 import { useNavigate } from 'react-router-dom';
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 import { db, auth } from "../services/firebase";
 import { updateProfile } from "firebase/auth";
 import toast from 'react-hot-toast';
@@ -51,8 +51,28 @@ const Gallery = () => {
         if (!window.confirm("Bu görseli profil resminiz yapmak istiyor musunuz?")) return;
         try {
             const adminProfileRef = doc(db, "admin", "profile");
-            await setDoc(adminProfileRef, { photoURL: imageItem.url, updatedAt: new Date() }, { merge: true });
-            
+
+            // Mevcut profili çek, photoURLs dizisini al
+            const docSnap = await getDoc(adminProfileRef);
+            const existingData = docSnap.exists() ? docSnap.data() : {};
+
+            let currentURLs = [];
+            if (Array.isArray(existingData.photoURLs) && existingData.photoURLs.length > 0) {
+                currentURLs = existingData.photoURLs;
+            } else if (existingData.photoURL) {
+                currentURLs = [existingData.photoURL];
+            }
+
+            // Seçilen URL'yi başa taşı (zaten listede varsa önce kaldır, yoksa ekle)
+            const filtered = currentURLs.filter(u => u !== imageItem.url);
+            const newPhotoURLs = [imageItem.url, ...filtered];
+
+            await setDoc(adminProfileRef, {
+                photoURLs: newPhotoURLs,
+                photoURL: imageItem.url, // geriye dönük uyumluluk
+                updatedAt: new Date()
+            }, { merge: true });
+
             if (auth.currentUser) {
                 await updateProfile(auth.currentUser, { photoURL: imageItem.url });
             }
@@ -63,6 +83,7 @@ const Gallery = () => {
             toast.error("Hata: " + error.message);
         }
     };
+
 
     // Global click listener to close menu
     useEffect(() => {

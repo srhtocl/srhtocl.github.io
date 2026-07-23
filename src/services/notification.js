@@ -19,7 +19,7 @@ export const requestForToken = async (userId) => {
                 return token;
             }
         }
-    } catch (err) {
+    } catch (_err) {
         // Token alınamadı (izin reddedildi veya tarayıcı desteklemiyor)
     }
     return null;

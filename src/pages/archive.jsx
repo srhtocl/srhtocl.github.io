@@ -15,7 +15,7 @@ export default function Archive() {
 
     const observer = useRef();
 
-    const fetchMore = async () => {
+    const fetchMore = useCallback(async () => {
         if (loadingMore || !hasMore) return;
         setLoadingMore(true);
         const result = await getPaginatedPosts(lastVisible, LIMIT, null, true);
@@ -23,7 +23,7 @@ export default function Archive() {
         setLastVisible(result.lastVisible);
         setHasMore(result.hasMore);
         setLoadingMore(false);
-    };
+    }, [loadingMore, hasMore, lastVisible]);
 
     // IntersectionObserver — son elemente bağlanır, görününce daha fazla yükler
     const lastPostCallbackRef = useCallback(node => {
@@ -35,7 +35,7 @@ export default function Archive() {
             }
         });
         if (node) observer.current.observe(node);
-    }, [loadingMore, hasMore]);
+    }, [loadingMore, hasMore, fetchMore]);
 
     const fetchPosts = useCallback(async () => {
         setLoading(true);

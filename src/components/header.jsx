@@ -1,7 +1,21 @@
 import React, { useState } from "react";
-import { NavLink, useNavigate, useLocation, useMatches } from "react-router-dom";
-import { FiMenu, FiChevronLeft, FiLogOut, FiUser, FiEdit3, FiUsers, FiGrid, FiTag, FiArchive } from "react-icons/fi";
+import { useNavigate, useLocation, useMatches } from "react-router-dom";
+import { FiMenu, FiChevronLeft, FiLogOut, FiUser, FiEdit3, FiGrid, FiTag, FiArchive } from "react-icons/fi";
 import { useAuth } from "../context/auth-context";
+
+/** Menü öğesi butonu — Header bileşeninin DIŞINDA tanımlandı (React best practice).
+ *  Render içinde tanımlanırsa her render'da yeni bir bileşen oluşturulur ve state reset olur.
+ */
+// eslint-disable-next-line no-unused-vars
+const MenuItem = ({ icon: Icon, label, onClick, isRed }) => (
+    <button
+        onClick={onClick}
+        className={`w-full text-left px-6 py-4 flex items-center gap-4 text-lg font-['Ubuntu'] transition-colors border-b border-gray-50 last:border-0 ${isRed ? 'text-red-500 hover:bg-red-50' : 'text-slate-700 hover:bg-slate-50'}`}
+    >
+        <Icon size={20} />
+        <span className="font-medium">{label}</span>
+    </button>
+);
 
 export const Header = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -26,16 +40,6 @@ export const Header = () => {
         .pop() || "Chat";
 
     const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
-
-    const MenuItem = ({ icon: Icon, label, onClick, isRed }) => (
-        <button
-            onClick={onClick}
-            className={`w-full text-left px-6 py-4 flex items-center gap-4 text-lg font-['Ubuntu'] transition-colors border-b border-gray-50 last:border-0 ${isRed ? 'text-red-500 hover:bg-red-50' : 'text-slate-700 hover:bg-slate-50'}`}
-        >
-            <Icon size={20} />
-            <span className="font-medium">{label}</span>
-        </button>
-    );
 
     return (
         <>

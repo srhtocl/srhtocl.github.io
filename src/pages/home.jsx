@@ -1,51 +1,42 @@
 /**
  * @file home.jsx
- * @description Kişisel ana sayfa. Profil resmi, biyografi ve mesaj sayfasına yönlendirme içerir.
- * Profil resmi için Lightbox (Tam ekran) ve mesaj için FAB (Floating Action Button) özellikleri vardır.
- * 
+ * @description Kişisel ana sayfa. Profil slider, biyografi ve mesaj sayfasına yönlendirme içerir.
+ *
  * @dependencies
- * - src/services/firebase (Firestore profil verisi)
- * - react-icons/fi (İkonlar)
- * 
- * @date 2026-01-18
- * @author [AI Assistant]
+ * - src/context/profile-context (profil verisi)
+ * - src/components/profile-slider (katmanlı profil fotoğrafı slider'ı)
+ *
+ * @date 2026-07-20
  */
 
-import React, { useState } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
-import { FiMessageSquare, FiX } from "react-icons/fi";
+import { FiMessageSquare } from "react-icons/fi";
 import { useProfileContext } from "../context/profile-context";
 import { useAuth } from "../context/auth-context";
+import ProfileSlider from "../components/profile-slider";
 
 export default function Home() {
     const { profile } = useProfileContext();
     const { user } = useAuth();
-    const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
     return (
         <section className="relative flex flex-col w-full h-full justify-center items-center overflow-hidden bg-gradient-to-br from-slate-50 via-gray-100 to-slate-200">
 
             {/* Background Atmosphere */}
-            <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-slate-300 rounded-full mix-blend-multiply filter blur-[80px] opacity-20 animate-blob"></div>
-            <div className="absolute top-[-20%] right-[-10%] w-[70vw] h-[70vw] bg-gray-300 rounded-full mix-blend-multiply filter blur-[80px] opacity-20 animate-blob animation-delay-2000"></div>
-            <div className="absolute -bottom-[20%] left-[20%] w-[70vw] h-[70vw] bg-slate-200 rounded-full mix-blend-multiply filter blur-[80px] opacity-30 animate-blob animation-delay-4000"></div>
+            <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-slate-300 rounded-full mix-blend-multiply filter blur-[80px] opacity-20 animate-blob" />
+            <div className="absolute top-[-20%] right-[-10%] w-[70vw] h-[70vw] bg-gray-300 rounded-full mix-blend-multiply filter blur-[80px] opacity-20 animate-blob animation-delay-2000" />
+            <div className="absolute -bottom-[20%] left-[20%] w-[70vw] h-[70vw] bg-slate-200 rounded-full mix-blend-multiply filter blur-[80px] opacity-30 animate-blob animation-delay-4000" />
 
             {/* Main Content */}
-            <div className="relative z-10 flex flex-col items-center justify-center p-6 text-center max-w-4xl">
+            <div className="relative z-10 flex flex-col items-center justify-center p-6 text-center max-w-4xl w-full">
 
-                {/* Profile Section - Clickable for Lightbox */}
-                <div className="mb-10 relative group cursor-pointer" onClick={() => setIsLightboxOpen(true)}>
-                    {/* Glowing effect */}
-                    <div className="absolute -inset-4 bg-white/50 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition duration-700"></div>
-
-                    <div className="relative w-40 h-40 md:w-56 md:h-56 p-1 border-4 border-white/50 rounded-full shadow-2xl transform transition-transform duration-500 group-hover:scale-105">
-                        <img
-                            className="w-full h-full rounded-full object-cover grayscale transition-all duration-500 group-hover:grayscale-0"
-                            src={profile.photoURL || null}
-                            alt={profile.displayName || undefined}
-                        />
+                {/* Profile Slider */}
+                {profile.photoURLs?.length > 0 && (
+                    <div className="mb-12 w-full max-w-xs md:max-w-md">
+                        <ProfileSlider images={profile.photoURLs} />
                     </div>
-                </div>
+                )}
 
                 {/* Typography Section */}
                 {profile.bio && (
@@ -58,7 +49,7 @@ export default function Home() {
 
             </div>
 
-            {/* FAB - Sadece giriş yapılmamışsa göster */}
+            {/* FAB — sadece giriş yapılmamışsa göster */}
             {!user && (
                 <div className="fixed bottom-0 left-0 w-full z-30 p-4 pointer-events-none">
                     <div className="w-full max-w-2xl mx-auto flex justify-end pointer-events-none">
@@ -75,29 +66,6 @@ export default function Home() {
                 </div>
             )}
 
-            {/* Lightbox Modal */}
-            {/* Lightbox Modal - Full Immersive */}
-            {isLightboxOpen && (
-                <div
-                    className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex items-center justify-center animate-in fade-in duration-500"
-                    onClick={() => setIsLightboxOpen(false)}
-                >
-                    <button
-                        className="absolute top-4 right-4 p-1.5 bg-white/10 hover:bg-white/20 text-white rounded-md backdrop-blur-md transition-all z-50 hover:rotate-90 duration-300"
-                        onClick={(e) => { e.stopPropagation(); setIsLightboxOpen(false); }}
-                    >
-                        <FiX size={20} />
-                    </button>
-
-                    <img
-                        src={profile.photoURL || null}
-                        alt="Profile Full"
-                        className="w-screen h-screen object-contain animate-in zoom-in-50 slide-in-from-bottom-10 duration-500 ease-out select-none"
-                        onClick={(e) => e.stopPropagation()}
-                    />
-                </div>
-            )}
-
         </section>
-    )
+    );
 }

@@ -1,6 +1,6 @@
 import { categoryCollectionRef, postCollectionRef } from "./firebase";
 import { db } from "./firebase";
-import { doc, setDoc, getDocs, query, orderBy, deleteDoc, where, writeBatch } from "firebase/firestore";
+import { doc, setDoc, getDocs, query, orderBy, where, writeBatch } from "firebase/firestore";
 
 /**
  * Fetches all categories from the 'categories' collection, ordered by name.
