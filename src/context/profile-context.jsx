@@ -12,7 +12,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { updateProfile as updateFirebaseAuthProfile } from "firebase/auth";
+import { updateProfile as updateFirebaseAuthProfile, onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "../services/firebase";
 import { insertDocument } from "../services/post-methods";
 import { toast } from "react-hot-toast";
@@ -27,7 +27,8 @@ export const ProfileProvider = ({ children }) => {
     const [profile, setProfile] = useState({
         photoURLs: [],
         bio: "",
-        displayName: ""
+        displayName: "",
+        username: ""
     });
     const [profileLoading, setProfileLoading] = useState(true);
 
@@ -47,12 +48,12 @@ export const ProfileProvider = ({ children }) => {
                     resolvedPhotoURLs = [data.photoURL];
                 }
 
-                setProfile({
-                    photoURLs: resolvedPhotoURLs,
+                setProfile(prev => ({
+                    photoURLs: resolvedPhotoURLs.length > 0 ? resolvedPhotoURLs : (auth.currentUser?.photoURL ? [auth.currentUser.photoURL] : prev.photoURLs),
                     bio: data.bio || "",
-                    displayName: data.displayName || data.name || "", // We will merge auth user later if needed
+                    displayName: data.displayName || data.name || auth.currentUser?.displayName || prev.displayName || "",
                     username: data.username || ""
-                });
+                }));
             }
         } catch (error) {
             console.error("Profile verisi çekilemedi:", error);
@@ -65,16 +66,31 @@ export const ProfileProvider = ({ children }) => {
         fetchProfile();
     }, [fetchProfile]);
 
-    // Google Auth verisi (user) gecikmeli gelebileceği için, eğer veritabanında isim yoksa 
-    // ve auth.currentUser sonradan yüklenirse ismi Google'dan al.
+    // Google Auth verisi (user) gecikmeli gelebileceği için, auth state değişikliklerini dinle
     useEffect(() => {
-        if (auth.currentUser?.displayName && !profile.displayName) {
-            setProfile(prev => ({
-                ...prev,
-                displayName: prev.displayName || auth.currentUser.displayName
-            }));
-        }
-    }, [profile.displayName]); // We check whenever profile changes, and if it's empty, we try auth.currentUser. But better yet, let's just listen to auth state changes in useAuth.
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            if (user) {
+                setProfile(prev => {
+                    let updated = false;
+                    const next = { ...prev };
+                    
+                    if (!prev.displayName && user.displayName) {
+                        next.displayName = user.displayName;
+                        updated = true;
+                    }
+                    
+                    if (prev.photoURLs.length === 0 && user.photoURL) {
+                        next.photoURLs = [user.photoURL];
+                        updated = true;
+                    }
+                    
+                    return updated ? next : prev;
+                });
+            }
+        });
+        
+        return () => unsubscribe();
+    }, []);
 
 
     /**
@@ -147,7 +163,7 @@ export const ProfileProvider = ({ children }) => {
             toast.error("Hata: " + error.message);
             return false;
         }
-    }, [profile.bio, profile.photoURLs]);
+    }, [profile.bio, profile.photoURLs, profile.displayName, profile.username]);
 
     return (
         <ProfileContext.Provider value={{
