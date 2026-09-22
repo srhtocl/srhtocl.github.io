@@ -9,7 +9,7 @@
  * @date 2026-07-20
  */
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { FiMessageSquare } from "react-icons/fi";
 import { useProfileContext } from "../context/profile-context";
@@ -17,8 +17,17 @@ import { useAuth } from "../context/auth-context";
 import ProfileSlider from "../components/profile-slider";
 
 export default function Home() {
-    const { profile } = useProfileContext();
+    const { profile, profileLoading } = useProfileContext();
     const { user } = useAuth();
+
+    // Veri gelir gelmez içerik aniden "patlamasın" diye yumuşak bir fade-in.
+    const [showContent, setShowContent] = useState(false);
+    useEffect(() => {
+        if (!profileLoading) {
+            const id = requestAnimationFrame(() => setShowContent(true));
+            return () => cancelAnimationFrame(id);
+        }
+    }, [profileLoading]);
 
     return (
         <section className="relative flex flex-col w-full h-full justify-center items-center overflow-hidden bg-gradient-to-br from-slate-50 via-gray-100 to-slate-200">
@@ -32,15 +41,25 @@ export default function Home() {
             <div className="relative z-10 flex flex-col items-center justify-center p-6 text-center max-w-4xl w-full">
 
                 {/* Profile Slider */}
-                {profile.photoURLs?.length > 0 && (
-                    <div className="mb-12 w-full max-w-xs md:max-w-md">
-                        <ProfileSlider images={profile.photoURLs} />
+                {profileLoading ? (
+                    <div className="mb-12 flex justify-center">
+                        <div className="w-40 h-40 md:w-56 md:h-56 rounded-full bg-slate-200/70 animate-pulse" />
                     </div>
+                ) : (
+                    profile.photoURLs?.length > 0 && (
+                        <div
+                            className={`mb-12 w-full max-w-xs md:max-w-md transition-opacity duration-700 ease-out ${showContent ? "opacity-100" : "opacity-0"}`}
+                        >
+                            <ProfileSlider images={profile.photoURLs} />
+                        </div>
+                    )
                 )}
 
                 {/* Typography Section */}
-                {profile.bio && (
-                    <div className="space-y-6">
+                {!profileLoading && profile.bio && (
+                    <div
+                        className={`space-y-6 transition-opacity duration-700 ease-out ${showContent ? "opacity-100" : "opacity-0"}`}
+                    >
                         <p className="text-2xl md:text-3xl text-slate-700 font-['Marck_Script'] tracking-wide max-w-2xl mx-auto leading-relaxed drop-shadow-sm select-none">
                             {profile.bio}
                         </p>
