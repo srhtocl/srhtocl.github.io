@@ -2,7 +2,7 @@ import { initializeApp } from "firebase/app";
 
 import { getAuth } from "firebase/auth";
 
-import { getFirestore, collection } from "firebase/firestore";
+import { initializeFirestore, collection } from "firebase/firestore";
 import { getMessaging } from "firebase/messaging";
 import { getStorage } from "firebase/storage";
 
@@ -26,8 +26,13 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Get a Firestore instance
-const db = getFirestore(app);
+// GitHub Pages gibi Firebase Hosting dışındaki barındırmalarda, Firestore'un
+// varsayılan WebChannel/streaming bağlantısı bazı CDN/ağlarda kurulamayıp
+// "client is offline" hatasına yol açabiliyor (bilinen bir Firestore Web SDK
+// sınırlaması). Long-polling'e otomatik geçişi zorlayarak bunu önlüyoruz.
+const db = initializeFirestore(app, {
+    experimentalAutoDetectLongPolling: true
+});
 
 // Get an Auth instance
 const auth = getAuth(app);
