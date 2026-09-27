@@ -9,12 +9,16 @@ service cloud.firestore {
       return request.auth != null && request.auth.token.admin == true;
     }
 
-    // Yeni mesajın içeriğinin geçerli olup olmadığını kontrol eder
+    // Yeni mesajın içeriğinin geçerli olup olmadığını kontrol eder.
+    // "admin" olarak işaretlenmiş bir mesaj, ancak gerçekten kimlik doğrulanmış
+    // admin tarafından yazılıyorsa kabul edilir — aksi halde herkes sahte
+    // admin mesajı enjekte edebilirdi.
     function isValidMessage(msg) {
       return msg.keys().hasAll(['user', 'time', 'data'])
           && msg.data is string
           && msg.data.size() > 0
-          && msg.data.size() <= 2000;
+          && msg.data.size() <= 2000
+          && (msg.user != 'admin' || isAdmin());
     }
 
     // messages array boyutunun sınır içinde olup olmadığını kontrol eder

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Cookies from "js-cookie";
-import { setDocument, subscribeToMessages } from "../services/db-methods";
+import { getDocumentById, setDocument, subscribeToMessages } from "../services/db-methods";
 import { requestForToken } from "../services/notification";
 import toast from "react-hot-toast";
 
@@ -59,9 +59,16 @@ export const useChat = (targetUserId = null) => {
                 } else {
                     Cookies.set('user', currentUser, { expires: 7 });
 
-                    // Mevcut mesajlara dokunmadan sadece varlığını garanti eder.
-                    // Admin sohbeti silmiş olsa bile merge:true dokümanı yeniden oluşturur.
-                    const setRes = await setDocument(currentUser, { user: currentUser });
+                    // Admin sohbeti silmiş olabilir: doküman yoksa "create" kuralı
+                    // messages alanını şart koşuyor, o yüzden önce varlığını kontrol
+                    // edip ona göre payload'ı belirliyoruz. Doküman zaten varsa
+                    // messages alanına hiç dokunmuyoruz (mevcut mesajlar silinmesin).
+                    const existing = await getDocumentById(currentUser);
+                    const payload = existing.success
+                        ? { user: currentUser }
+                        : { user: currentUser, messages: [] };
+
+                    const setRes = await setDocument(currentUser, payload);
                     if (!setRes.success) {
                         toast.error("Bağlantı hatası: Kullanıcı oluşturulamadı.");
                         console.error(setRes.error);
