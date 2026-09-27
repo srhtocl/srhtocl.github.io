@@ -2,10 +2,7 @@ import { initializeApp } from "firebase/app";
 
 import { getAuth } from "firebase/auth";
 
-import { initializeFirestore, collection, setLogLevel } from "firebase/firestore";
-
-// GEÇİCİ TEŞHİS: canlıda "client is offline" hatasının gerçek nedenini görmek için.
-setLogLevel("debug");
+import { initializeFirestore, collection } from "firebase/firestore";
 import { getMessaging } from "firebase/messaging";
 import { getStorage } from "firebase/storage";
 
