@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Cookies from "js-cookie";
-import { insertDocument, setDocument, subscribeToMessages } from "../services/db-methods";
+import { setDocument, subscribeToMessages } from "../services/db-methods";
 import { requestForToken } from "../services/notification";
 import toast from "react-hot-toast";
 
@@ -47,11 +47,11 @@ export const useChat = (targetUserId = null) => {
                 currentUser = Cookies.get('user');
 
                 if (!currentUser) {
-                    // Generate new ID
+                    // Generate new ID — doküman ID'si de bu değerle aynı olacak (bkz. firestore.rules)
                     currentUser = (new Date()).getTime().toString(16);
                     Cookies.set('user', currentUser, { expires: 7 });
 
-                    const res = await insertDocument({ user: currentUser, messages: [] });
+                    const res = await setDocument(currentUser, { user: currentUser, messages: [] });
                     if (!res.success) {
                         toast.error("Bağlantı hatası: Kullanıcı oluşturulamadı.");
                         console.error(res.error);
@@ -59,11 +59,12 @@ export const useChat = (targetUserId = null) => {
                 } else {
                     Cookies.set('user', currentUser, { expires: 7 });
 
-                    // If admin deleted the chat but visitor returns, recreate the document
+                    // Mevcut mesajlara dokunmadan sadece varlığını garanti eder.
+                    // Admin sohbeti silmiş olsa bile merge:true dokümanı yeniden oluşturur.
                     const setRes = await setDocument(currentUser, { user: currentUser });
-
-                    if (!setRes.success && setRes.error?.code === 'NOT_FOUND') {
-                        await insertDocument({ user: currentUser, messages: [] });
+                    if (!setRes.success) {
+                        toast.error("Bağlantı hatası: Kullanıcı oluşturulamadı.");
+                        console.error(setRes.error);
                     }
                 }
 

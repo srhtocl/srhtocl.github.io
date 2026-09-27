@@ -19,6 +19,8 @@ import { useGallery } from '../hooks/useGallery';
 import { useNavigate } from 'react-router-dom';
 
 import toast from 'react-hot-toast';
+import ConfirmSheet from '../components/confirm-sheet';
+import { useConfirm } from '../hooks/useConfirm';
 
 const Gallery = () => {
     const { images, loading, removeImage } = useGallery();
@@ -27,9 +29,14 @@ const Gallery = () => {
     const { isAdmin } = useAuth();
     const { updateProfileData, profile } = useProfileContext();
     const navigate = useNavigate();
+    const { confirm, sheetProps } = useConfirm();
 
     const handleDelete = async (imageItem) => {
-        if (!window.confirm("Bu resmi kalıcı olarak silmek istiyor musunuz?")) return;
+        const { confirmed } = await confirm({
+            title: 'Görseli sil',
+            message: 'Bu resmi kalıcı olarak silmek istiyor musunuz?',
+        });
+        if (!confirmed) return;
 
         const success = await removeImage(imageItem);
         if (success && selectedImage?.url === imageItem.url) {
@@ -45,7 +52,13 @@ const Gallery = () => {
 
     const handleSetProfilePic = async (e, imageItem) => {
         e.stopPropagation();
-        if (!window.confirm("Bu görseli profil resminiz yapmak istiyor musunuz?")) return;
+        const { confirmed } = await confirm({
+            title: 'Profil resmini değiştir',
+            message: 'Bu görseli profil resminiz yapmak istiyor musunuz? Bu görsel bundan sonra herkese açık olacak.',
+            confirmLabel: 'Profil Resmi Yap',
+            danger: false,
+        });
+        if (!confirmed) return;
         try {
             const currentURLs = profile?.photoURLs || [];
             const filtered = currentURLs.filter(u => u !== imageItem.url);
@@ -251,6 +264,8 @@ const Gallery = () => {
                     />
                 </div>
             )}
+
+            <ConfirmSheet {...sheetProps} />
         </div>
     );
 };

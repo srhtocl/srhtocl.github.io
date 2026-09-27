@@ -25,8 +25,6 @@ export const requestForToken = async (userId) => {
     return null;
 };
 
-import { getDocumentsByUsername, insertDocument } from "./db-methods";
-
 const saveTokenToDatabase = async (userId, token) => {
     if (!userId) return;
     try {
@@ -35,25 +33,15 @@ const saveTokenToDatabase = async (userId, token) => {
             const tokenRef = doc(db, "admin", "notifications");
             await setDoc(tokenRef, { token: token, updatedAt: new Date() }, { merge: true });
         } else {
-            // Visitor token: We must find the ACTUAL document ID first
-            const response = await getDocumentsByUsername(userId);
-
-            if (response.success && response.data) {
-                // Document exists -> Update it
-                const docId = response.data.id;
-                const userChatRef = doc(db, "chats", docId);
-                await setDoc(userChatRef, { fcmToken: token, tokenUpdatedAt: new Date() }, { merge: true });
-            } else {
-                // CAUTION: Document does NOT exist (e.g. fresh user who hasn't sent a message yet but granted permission)
-                // We must create the document properly so useChat can find it later.
-                // It must have the 'user' field matched to the cookie ID.
-                await insertDocument({
-                    user: userId,
-                    messages: [],
-                    fcmToken: token,
-                    tokenUpdatedAt: new Date()
-                });
-            }
+            // Doküman ID'si artık ziyaretçinin çerez değeriyle (userId) birebir aynı,
+            // bu yüzden önce sorguyla ID bulmaya gerek yok. merge:true doküman
+            // yoksa oluşturur (fresh kullanıcı), varsa mevcut mesajlara dokunmadan günceller.
+            const userChatRef = doc(db, "chats", userId);
+            await setDoc(userChatRef, {
+                user: userId,
+                fcmToken: token,
+                tokenUpdatedAt: new Date()
+            }, { merge: true });
         }
     } catch (error) {
         console.error("Token kaydetme hatası:", error);

@@ -25,17 +25,23 @@ service cloud.firestore {
 
     // Mesajlar (chats)
     // Anonim kullanıcılar Firebase Auth kullanmadığı için request.auth null olur.
-    // create: Yalnızca boş mesaj dizisiyle belge oluşturulabilir.
-    // read  : Herkese açık (ziyaretçi kendi mesajlarını görebilmeli)
+    // Doküman ID'si artık ziyaretçinin çerez değeriyle birebir aynı (bkz. useChat.js),
+    // bu sayede ziyaretçi kendi sohbetini her zaman TEK doküman okuyarak (get) bulur,
+    // koleksiyonun tamamını sorgulamasına (list) hiç gerek kalmaz.
+    // get   : Herkese açık (ziyaretçi kendi ID'sini biliyorsa kendi sohbetini görebilir)
+    // list  : Sadece Admin (aksi halde herkes TÜM ziyaretçilerin mesajlarını tek sorguda çekebilirdi)
+    // create: Yalnızca boş mesaj dizisiyle ve chatId == user alanıyla belge oluşturulabilir.
     // update: Mesaj sayısı ve uzunluk sınırı kontrol edilir
     // delete: Sadece Admin
     match /chats/{chatId} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if isAdmin();
 
       allow create: if request.resource.data.keys().hasAll(['user', 'messages'])
                    && request.resource.data.user is string
                    && request.resource.data.user.size() > 0
                    && request.resource.data.user.size() <= 100
+                   && request.resource.data.user == chatId
                    && request.resource.data.messages is list
                    && request.resource.data.messages.size() == 0;
 

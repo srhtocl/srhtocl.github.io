@@ -5,6 +5,8 @@ import { useAuth } from "../context/auth-context";
 import { FiMessageSquare, FiTrash2, FiBellOff, FiMonitor, FiSmartphone, FiTablet, FiGlobe } from "react-icons/fi";
 import { requestForToken } from "../services/notification";
 import toast from "react-hot-toast";
+import ConfirmSheet from "../components/confirm-sheet";
+import { useConfirm } from "../hooks/useConfirm";
 
 function AllMessage() {
     const [messages, setMessages] = useState([]);
@@ -16,6 +18,7 @@ function AllMessage() {
 
     const totalMsgRef = useRef(0);
     const firstLoad = useRef(true);
+    const { confirm, sheetProps } = useConfirm();
 
     useEffect(() => {
         if (!messages) return;
@@ -72,17 +75,21 @@ function AllMessage() {
         e.preventDefault(); // Prevent Link navigation
         e.stopPropagation(); // Stop event bubbling
 
-        if (window.confirm("Bu mesajı silmek istediğinize emin misiniz?")) {
-            const response = await deleteDocument(docId);
+        const { confirmed } = await confirm({
+            title: 'Mesajı sil',
+            message: 'Bu mesajı silmek istediğinize emin misiniz?',
+        });
+        if (!confirmed) return;
 
-            if (response.success) {
-                toast.success("Mesaj silindi.");
-                // Optimistic UI update
-                setMessages(prev => prev.filter(msg => msg.docId !== docId));
-            } else {
-                toast.error("Silme işlemi başarısız!");
-                console.error(response.error);
-            }
+        const response = await deleteDocument(docId);
+
+        if (response.success) {
+            toast.success("Mesaj silindi.");
+            // Optimistic UI update
+            setMessages(prev => prev.filter(msg => msg.docId !== docId));
+        } else {
+            toast.error("Silme işlemi başarısız!");
+            console.error(response.error);
         }
     };
 
@@ -200,6 +207,8 @@ function AllMessage() {
                     </div>
                 )}
             </div>
+
+            <ConfirmSheet {...sheetProps} />
         </div>
     );
 }

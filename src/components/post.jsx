@@ -23,27 +23,52 @@ import { deleteDocument, updatePostStatus } from '../services/post-methods';
 import { useAuth } from '../context/auth-context';
 import PostImages from './post-images';
 import { useProfileContext } from '../context/profile-context';
+import ConfirmSheet from './confirm-sheet';
+import { useConfirm } from '../hooks/useConfirm';
 
 const Post = ({ post, onDelete, onUnarchive }) => {
   const [showMenu, setShowMenu] = useState(false);
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
   const { profile } = useProfileContext();
-
-  const handleDelete = async () => {
-    if (window.confirm("Bu gönderiyi silmek istediğinize emin misiniz?")) {
-      const result = await deleteDocument(post.id);
-      if (result.success) {
-        if (onDelete) onDelete(post.id);
-      } else {
-        alert("Silme işlemi başarısız oldu.");
-      }
-    }
-  };
+  const { confirm, sheetProps } = useConfirm();
 
   // Convert legacy/single image format to array
   const rawImages = post.images && Array.isArray(post.images) ? post.images : (post.image_url ? [post.image_url] : []);
   const hasImages = rawImages.length > 0;
+
+  const handleDelete = async () => {
+    const { confirmed, checkboxChecked } = await confirm({
+      title: 'Gönderiyi sil',
+      confirmLabel: 'Sil',
+      checkboxLabel: hasImages ? 'Görseli de sil' : null,
+    });
+    if (!confirmed) return;
+
+    const result = await deleteDocument(post.id, checkboxChecked ? rawImages : []);
+    if (result.success) {
+      if (onDelete) onDelete(post.id);
+    } else {
+      alert("Silme işlemi başarısız oldu.");
+    }
+  };
+
+  const handleArchive = async () => {
+    const { confirmed } = await confirm({
+      title: 'Gönderiyi arşivle',
+      message: 'Bu gönderiyi arşivlemek istediğinize emin misiniz? Ana sayfada görünmeyecek.',
+      confirmLabel: 'Arşivle',
+      danger: false,
+    });
+    if (!confirmed) return;
+
+    const result = await updatePostStatus(post.id, ['archived']);
+    if (result.success) {
+      if (onDelete) onDelete(post.id);
+    } else {
+      alert("Arşivleme başarısız.");
+    }
+  };
 
   return (
     <div className="bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden group">
@@ -95,29 +120,22 @@ const Post = ({ post, onDelete, onUnarchive }) => {
                   <FiCopy size={14} /> Kopyala
                 </button>
                 <button
-                  onClick={async () => {
+                  onClick={() => {
+                    setShowMenu(false);
                     if (onUnarchive) {
                       // Arşiv sayfasında: yayına al
                       onUnarchive(post.id);
                     } else {
                       // Normal sayfada: arşivle
-                      if (window.confirm("Bu gönderiyi arşivlemek istediğinize emin misiniz? Ana sayfada görünmeyecek.")) {
-                        const result = await updatePostStatus(post.id, ['archived']);
-                        if (result.success) {
-                          if (onDelete) onDelete(post.id);
-                        } else {
-                          alert("Arşivleme başarısız.");
-                        }
-                      }
+                      handleArchive();
                     }
-                    setShowMenu(false);
                   }}
                   className="w-full text-left px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-2"
                 >
                   <FiArchive size={14} /> {onUnarchive ? 'Yayına al' : 'Arşivle'}
                 </button>
                 <button
-                  onClick={handleDelete}
+                  onClick={() => { setShowMenu(false); handleDelete(); }}
                   className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 flex items-center gap-2"
                 >
                   <FiTrash2 size={14} /> Sil
@@ -187,6 +205,8 @@ const Post = ({ post, onDelete, onUnarchive }) => {
         )}
 
       </div>
+
+      <ConfirmSheet {...sheetProps} />
     </div>
   );
 };

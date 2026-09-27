@@ -1,5 +1,5 @@
 import { collectionRef } from "./firebase";
-import { doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs, setDoc, query, where, onSnapshot } from "firebase/firestore";
+import { doc, updateDoc, deleteDoc, getDoc, getDocs, setDoc, query, onSnapshot } from "firebase/firestore";
 
 // --- HELPER FOR STANDARDIZED ANSWERS ---
 /**
@@ -25,16 +25,6 @@ async function getAllDocumentsIds() {
         return createResponse(true, docIds);
     } catch (error) {
         console.error("Service Error (getAllDocumentsIds):", error);
-        return createResponse(false, null, error);
-    }
-}
-
-async function insertDocument(data) {
-    try {
-        const docRef = await addDoc(collectionRef, data);
-        return createResponse(true, { id: docRef.id });
-    } catch (error) {
-        console.error("Service Error (insertDocument):", error);
         return createResponse(false, null, error);
     }
 }
@@ -77,44 +67,14 @@ async function getDocumentById(docId) {
     }
 }
 
-async function getDocumentsByUsername(user) {
+// Doküman ID'si artık ziyaretçinin çerez değeriyle birebir aynı olduğundan
+// (bkz. useChat.js), önce sorguyla ID bulup sonra yazma adımına gerek kalmadı.
+// Doküman yoksa merge:true ile otomatik oluşturulur, varsa güncellenir.
+async function setDocument(docId, payload) {
     try {
-        if (!user) throw new Error("Username parameter is required");
-
-        const q = query(collectionRef, where("user", "==", user));
-        const querySnapshot = await getDocs(q);
-        const documents = [];
-
-        querySnapshot.forEach((doc) => documents.push({ ...doc.data(), id: doc.id }));
-
-        if (documents.length === 0) {
-            return createResponse(false, null, { code: 'NOT_FOUND', message: 'User not found' });
-        }
-
-        return createResponse(true, documents[0]);
-
-    } catch (error) {
-        console.error("Service Error (getDocumentsByUsername):", error);
-        return createResponse(false, null, error);
-    }
-}
-
-async function setDocument(user, payload) {
-    try {
-        const response = await getDocumentsByUsername(user);
-
-        if (!response.success && response.error?.code === 'NOT_FOUND') {
-            return createResponse(false, null, { code: 'NOT_FOUND', message: 'Target document for user not found' });
-        }
-
-        if (!response.success) return response;
-
-        const docData = response.data;
-        const docRef = doc(collectionRef, docData.id);
-
+        const docRef = doc(collectionRef, docId);
         await setDoc(docRef, payload, { merge: true });
         return createResponse(true);
-
     } catch (error) {
         console.error("Service Error (setDocument):", error);
         return createResponse(false, null, error);
@@ -144,15 +104,11 @@ function subscribeToAllMessages(callback) {
 function subscribeToMessages(user, callback) {
     if (!user) return () => { };
 
-    const q = query(collectionRef, where("user", "==", user));
+    const docRef = doc(collectionRef, user);
 
-    return onSnapshot(q,
-        (snapshot) => {
-            if (!snapshot.empty) {
-                callback(snapshot.docs[0].data());
-            } else {
-                callback(null);
-            }
+    return onSnapshot(docRef,
+        (docSnapshot) => {
+            callback(docSnapshot.exists() ? docSnapshot.data() : null);
         },
         (error) => {
             console.error("Subscription Error (User):", error);
@@ -163,10 +119,8 @@ function subscribeToMessages(user, callback) {
 
 export {
     getDocumentById,
-    getDocumentsByUsername,
     getAllDocumentsIds,
     setDocument,
-    insertDocument, // returns { success, data: { id } }
     updateDocument,
     deleteDocument,
     subscribeToMessages,

@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { getAllCategories, renameCategory, deleteCategory } from "../services/category-methods";
 import { FiEdit2, FiTrash2, FiCheck, FiX, FiTag } from "react-icons/fi";
 import toast from "react-hot-toast";
+import ConfirmSheet from "../components/confirm-sheet";
+import { useConfirm } from "../hooks/useConfirm";
 
 export default function ManageCategories() {
     const navigate = useNavigate();
@@ -11,6 +13,7 @@ export default function ManageCategories() {
     const [editingId, setEditingId] = useState(null);   // which row is in edit mode
     const [editValue, setEditValue] = useState("");
     const [saving, setSaving] = useState(false);
+    const { confirm, sheetProps } = useConfirm();
 
     const fetchCategories = async () => {
         setLoading(true);
@@ -58,7 +61,11 @@ export default function ManageCategories() {
     };
 
     const handleDelete = async (cat) => {
-        if (!window.confirm(`"${cat.name}" kategorisini silmek istediğinize emin misiniz?\n\nBu kategorideki gönderilerin etiketleri de temizlenecek.`)) return;
+        const { confirmed } = await confirm({
+            title: 'Kategoriyi sil',
+            message: `"${cat.name}" kategorisini silmek istediğinize emin misiniz?\n\nBu kategorideki gönderilerin etiketleri de temizlenecek.`,
+        });
+        if (!confirmed) return;
 
         const result = await deleteCategory(cat.id, cat.name);
         if (result.success) {
@@ -167,6 +174,8 @@ export default function ManageCategories() {
                     Bir kategoriyi silmek o kategorideki gönderileri silmez, yalnızca kategorisiz bırakır.
                 </p>
             </div>
+
+            <ConfirmSheet {...sheetProps} />
         </div>
     );
 }

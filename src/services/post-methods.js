@@ -1,6 +1,7 @@
-import { postCollectionRef } from "./firebase";
+import { postCollectionRef, storage } from "./firebase";
 
 import { doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs, query, orderBy, limit, startAfter, where } from "firebase/firestore";
+import { ref, deleteObject } from "firebase/storage";
 
 // --- HELPER FOR STANDARDIZED ANSWERS ---
 const createResponse = (success, data = null, error = null) => ({
@@ -105,14 +106,20 @@ async function updateDocument(docId, data) {
     }
 }
 
-async function deleteDocument(docId) {
+async function deleteDocument(docId, imageUrlsToDelete = []) {
     try {
         const docRef = doc(postCollectionRef, docId);
 
-        // Reverted: We do NOT delete images from Storage automatically anymore.
-        // User wants to keep them for a potential Gallery feature.
-
+        // Varsayılan: görseller Storage'da kalır (Galeri'de yeniden kullanılabilsin diye).
+        // Çağıran taraf açıkça isterse (kullanıcı onay ekranında işaretlerse) burada silinir.
         await deleteDoc(docRef);
+
+        if (imageUrlsToDelete.length > 0) {
+            await Promise.allSettled(
+                imageUrlsToDelete.map((url) => deleteObject(ref(storage, url)))
+            );
+        }
+
         return createResponse(true);
     } catch (error) {
         console.error("Service Error (deleteDocument):", error);
