@@ -6,16 +6,21 @@ import { getFirestore, collection } from "firebase/firestore";
 import { getMessaging } from "firebase/messaging";
 import { getStorage } from "firebase/storage";
 
+// CI secret'ları girilirken sona kopyalanan görünmez satır sonu (\n) karakterleri
+// Firebase config'i bozup canlıda "client is offline" hatasına yol açtığı için
+// her değer trim() ile temizleniyor.
+const trim = (value) => (typeof value === "string" ? value.trim() : value);
+
 const firebaseConfig = {
     // @ai-guard: DO NOT HARDCODE. Use environment variables for security.
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-    databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: import.meta.env.VITE_FIREBASE_APP_ID,
-    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+    apiKey: trim(import.meta.env.VITE_FIREBASE_API_KEY),
+    authDomain: trim(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN),
+    databaseURL: trim(import.meta.env.VITE_FIREBASE_DATABASE_URL),
+    projectId: trim(import.meta.env.VITE_FIREBASE_PROJECT_ID),
+    storageBucket: trim(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET),
+    messagingSenderId: trim(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID),
+    appId: trim(import.meta.env.VITE_FIREBASE_APP_ID),
+    measurementId: trim(import.meta.env.VITE_FIREBASE_MEASUREMENT_ID)
 };
 
 // Initialize Firebase
