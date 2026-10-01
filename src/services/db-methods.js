@@ -1,5 +1,5 @@
 import { collectionRef } from "./firebase";
-import { doc, updateDoc, deleteDoc, getDoc, getDocs, setDoc, query, onSnapshot } from "firebase/firestore";
+import { doc, updateDoc, deleteDoc, getDoc, getDocs, setDoc, query, onSnapshot, arrayUnion, serverTimestamp } from "firebase/firestore";
 
 // --- HELPER FOR STANDARDIZED ANSWERS ---
 /**
@@ -81,6 +81,25 @@ async function setDocument(docId, payload) {
     }
 }
 
+// Mesajı dizinin sonuna atomik olarak ekler. Tüm diziyi yeniden yazmak yerine
+// arrayUnion kullanıldığı için admin ile ziyaretçi aynı anda yazsa bile
+// birinin mesajı diğerininkini ezmez; firestore.rules de yalnızca bu
+// "sona tek mesaj ekleme" biçimine izin verir.
+// Ziyaretçi mesajlarında lastVisitorMessageAt sunucu saatiyle yazılır;
+// kurallar bunu spam sınırı (mesajlar arası en az 3 sn) için kullanır.
+async function appendMessage(docId, message, { asVisitor = false } = {}) {
+    try {
+        const docRef = doc(collectionRef, docId);
+        const data = { messages: arrayUnion(message) };
+        if (asVisitor) data.lastVisitorMessageAt = serverTimestamp();
+        await updateDoc(docRef, data);
+        return createResponse(true);
+    } catch (error) {
+        console.error("Service Error (appendMessage):", error);
+        return createResponse(false, null, error);
+    }
+}
+
 // --- SUBSCRIPTIONS (Callback Pattern) ---
 // Subscriptions don't return Promises, so they handle errors via a second callback or internal logging.
 // To keep valid interface, we won't change the signature too much but ensure robustness.
@@ -121,6 +140,7 @@ export {
     getDocumentById,
     getAllDocumentsIds,
     setDocument,
+    appendMessage,
     updateDocument,
     deleteDocument,
     subscribeToMessages,

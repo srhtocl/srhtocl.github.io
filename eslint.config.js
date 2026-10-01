@@ -53,6 +53,17 @@ export default defineConfig([
     },
   },
 
+  // ── Firestore kural testleri (Node.js / ESM) ────────────────────────────
+  {
+    files: ['tests/**/*.js'],
+    extends: [js.configs.recommended],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: globals.node,
+    },
+  },
+
   // ── Service Worker (public/firebase-messaging-sw.js) ────────────────────
   {
     files: ['public/**/*.js'],

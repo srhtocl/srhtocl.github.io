@@ -9,39 +9,76 @@ service cloud.firestore {
       return request.auth != null && request.auth.token.admin == true;
     }
 
-    // Yeni mesajın içeriğinin geçerli olup olmadığını kontrol eder.
-    // "admin" olarak işaretlenmiş bir mesaj, ancak gerçekten kimlik doğrulanmış
-    // admin tarafından yazılıyorsa kabul edilir — aksi halde herkes sahte
-    // admin mesajı enjekte edebilirdi.
-    function isValidMessage(msg) {
-      return msg.keys().hasAll(['user', 'time', 'data'])
+    // Tek bir mesajın şeklini ve gönderenini doğrular.
+    // Ziyaretçi yalnızca kendi adına (user == chatId) yazabilir; "admin" olarak
+    // işaretlenmiş mesajı ise sadece gerçekten kimliği doğrulanmış admin yazabilir.
+    function isValidMessage(msg, chatId) {
+      return msg is map
+          && msg.keys().hasOnly(['user', 'time', 'data'])
+          && msg.keys().hasAll(['user', 'time', 'data'])
+          && msg.time is int
           && msg.data is string
           && msg.data.size() > 0
           && msg.data.size() <= 2000
-          && (msg.user != 'admin' || isAdmin());
+          && (msg.user == chatId || (msg.user == 'admin' && isAdmin()));
     }
 
-    // messages array boyutunun sınır içinde olup olmadığını kontrol eder
-    function hasValidMessageCount(data) {
-      return !(data.keys().hasAny(['messages']))
-          || data.messages.size() <= 200;
+    // Mesaj dizisinin yalnızca sonuna TEK bir mesaj eklendiğini doğrular.
+    // Önceki mesajlar birebir korunmalı: araya sahte (ör. "admin") mesaj
+    // sokmak, geçmişi silmek veya değiştirmek bu sayede engellenir.
+    function isSingleAppend(chatId) {
+      let before = resource.data.get('messages', []);
+      let after = request.resource.data.messages;
+      return after is list
+          && after.size() == before.size() + 1
+          && after.size() <= 200
+          && after[0:before.size()] == before
+          && isValidMessage(after[after.size() - 1], chatId);
+    }
+
+    // Ziyaretçi mesajındaki (cihazdan gelen) saat, sunucu saatine ±5 dakika
+    // yakın olmalı; geçmiş/gelecek tarihli mesaj yazılamaz.
+    function isRecentMillis(t) {
+      return t > request.time.toMillis() - 300000
+          && t < request.time.toMillis() + 300000;
+    }
+
+    // Spam sınırı: aynı sohbette ziyaretçi mesajları arasında en az 3 saniye.
+    // lastVisitorMessageAt istemciden serverTimestamp() ile gönderilir ve
+    // request.time'a eşit olmak zorunda; cihaz saatiyle oynanarak atlatılamaz.
+    function passesThrottle() {
+      let last = resource.data.get('lastVisitorMessageAt', null);
+      return request.resource.data.get('lastVisitorMessageAt', null) == request.time
+          && (last == null || request.time > last + duration.value(3, 's'));
+    }
+
+    // Ziyaretçinin sona tek mesaj eklemesi (admin bu kontrole tabi değil).
+    function isVisitorAppend(chatId) {
+      let after = request.resource.data.messages;
+      return request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['messages', 'lastVisitorMessageAt'])
+          && isSingleAppend(chatId)
+          && isRecentMillis(after[after.size() - 1].time)
+          && passesThrottle();
     }
 
     // Mesajlar (chats)
     // Anonim kullanıcılar Firebase Auth kullanmadığı için request.auth null olur.
-    // Doküman ID'si artık ziyaretçinin çerez değeriyle birebir aynı (bkz. useChat.js),
-    // bu sayede ziyaretçi kendi sohbetini her zaman TEK doküman okuyarak (get) bulur,
-    // koleksiyonun tamamını sorgulamasına (list) hiç gerek kalmaz.
+    // Doküman ID'si ziyaretçinin çerezindeki rastgele kimlikle birebir aynıdır
+    // (bkz. useChat.js); ziyaretçi kendi sohbetini TEK doküman okuyarak (get) bulur.
+    // Kimliği bilmek = o sohbetin sahibi olmak, bu yüzden kimlik tahmin edilemez üretilir.
     // get   : Herkese açık (ziyaretçi kendi ID'sini biliyorsa kendi sohbetini görebilir)
     // list  : Sadece Admin (aksi halde herkes TÜM ziyaretçilerin mesajlarını tek sorguda çekebilirdi)
-    // create: Yalnızca boş mesaj dizisiyle ve chatId == user alanıyla belge oluşturulabilir.
-    // update: Mesaj sayısı ve uzunluk sınırı kontrol edilir
+    // create: Yalnızca rastgele biçimli ID (32 hex), boş mesaj dizisi ve chatId == user ile.
+    // update: Admin her şeyi; ziyaretçi ya sona tek mesaj ekler (saat ve spam
+    //         kontrolüyle) ya da bildirim tokenını günceller.
     // delete: Sadece Admin
     match /chats/{chatId} {
       allow get: if true;
       allow list: if isAdmin();
 
-      allow create: if request.resource.data.keys().hasAll(['user', 'messages'])
+      allow create: if chatId.matches('^[0-9a-f]{32}$')
+                   && request.resource.data.keys().hasOnly(['user', 'messages'])
                    && request.resource.data.user is string
                    && request.resource.data.user.size() > 0
                    && request.resource.data.user.size() <= 100
@@ -49,15 +86,13 @@ service cloud.firestore {
                    && request.resource.data.messages is list
                    && request.resource.data.messages.size() == 0;
 
-      allow update: if hasValidMessageCount(request.resource.data)
-                   && (
-                     !request.resource.data.keys().hasAny(['messages'])
-                     || request.resource.data.messages.size() == 0
-                     || isValidMessage(
-                          request.resource.data.messages[
-                            request.resource.data.messages.size() - 1
-                          ]
-                        )
+      allow update: if isAdmin()
+                   || isVisitorAppend(chatId)
+                   || (
+                     request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['fcmToken', 'tokenUpdatedAt'])
+                     && request.resource.data.get('fcmToken', '') is string
+                     && request.resource.data.get('fcmToken', '').size() <= 4096
                    );
 
       allow delete: if isAdmin();
