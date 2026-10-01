@@ -1,5 +1,5 @@
 import { collectionRef } from "./firebase";
-import { doc, updateDoc, deleteDoc, getDoc, getDocs, setDoc, query, onSnapshot, arrayUnion } from "firebase/firestore";
+import { doc, updateDoc, deleteDoc, getDoc, getDocs, setDoc, query, onSnapshot, arrayUnion, serverTimestamp } from "firebase/firestore";
 
 // --- HELPER FOR STANDARDIZED ANSWERS ---
 /**
@@ -85,10 +85,14 @@ async function setDocument(docId, payload) {
 // arrayUnion kullanıldığı için admin ile ziyaretçi aynı anda yazsa bile
 // birinin mesajı diğerininkini ezmez; firestore.rules de yalnızca bu
 // "sona tek mesaj ekleme" biçimine izin verir.
-async function appendMessage(docId, message) {
+// Ziyaretçi mesajlarında lastVisitorMessageAt sunucu saatiyle yazılır;
+// kurallar bunu spam sınırı (mesajlar arası en az 3 sn) için kullanır.
+async function appendMessage(docId, message, { asVisitor = false } = {}) {
     try {
         const docRef = doc(collectionRef, docId);
-        await updateDoc(docRef, { messages: arrayUnion(message) });
+        const data = { messages: arrayUnion(message) };
+        if (asVisitor) data.lastVisitorMessageAt = serverTimestamp();
+        await updateDoc(docRef, data);
         return createResponse(true);
     } catch (error) {
         console.error("Service Error (appendMessage):", error);

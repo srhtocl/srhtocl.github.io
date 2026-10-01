@@ -15,14 +15,16 @@ import {
     doc,
     getDoc,
     getDocs,
+    serverTimestamp,
     setDoc,
+    Timestamp,
     updateDoc
 } from "firebase/firestore";
 
 const CHAT_ID = "a1b2c3d4e5f60718293a4b5c6d7e8f90";
 const OTHER_ID = "ffffffffffffffffffffffffffffffff";
 
-const msg = (user, data = "merhaba", time = 1700000000000) => ({ user, time, data });
+const msg = (user, data = "merhaba", time = Date.now()) => ({ user, time, data });
 
 let env;
 
@@ -108,116 +110,124 @@ describe("chats: okuma", () => {
 
 describe("chats: ziyaretçi mesaj ekleme", () => {
     beforeEach(async () => {
-        await seedChat({ user: CHAT_ID, messages: [msg(CHAT_ID, "ilk")] });
+        await seedChat({ user: CHAT_ID, messages: [msg(CHAT_ID, "ilk", 1700000000000)] });
     });
 
+    // useChat'in gönderdiği biçim: arrayUnion + sunucu saatli spam damgası.
+    const visitorAppend = (fields) =>
+        updateDoc(doc(visitorDb(), "chats", CHAT_ID), {
+            lastVisitorMessageAt: serverTimestamp(),
+            ...fields
+        });
+
     test("arrayUnion ile sona kendi mesajını ekleyebilir", async () => {
-        await assertSucceeds(
+        await assertSucceeds(visitorAppend({ messages: arrayUnion(msg(CHAT_ID, "ikinci")) }));
+    });
+
+    test("spam damgası olmadan (eski istemci) mesaj ekleyemez", async () => {
+        await assertFails(
             updateDoc(doc(visitorDb(), "chats", CHAT_ID), {
-                messages: arrayUnion(msg(CHAT_ID, "ikinci", 1700000000001))
+                messages: arrayUnion(msg(CHAT_ID, "ikinci"))
             })
         );
     });
 
-    test("tüm diziyi doğru şekilde yeniden yazmak (eski istemci) hâlâ çalışır", async () => {
-        await assertSucceeds(
-            setDoc(
-                doc(visitorDb(), "chats", CHAT_ID),
-                {
-                    user: CHAT_ID,
-                    messages: [msg(CHAT_ID, "ilk"), msg(CHAT_ID, "ikinci", 1700000000001)]
-                },
-                { merge: true }
-            )
+    test("spam damgasını sunucu saati yerine kendisi seçemez", async () => {
+        await assertFails(
+            visitorAppend({
+                messages: arrayUnion(msg(CHAT_ID, "ikinci")),
+                lastVisitorMessageAt: Timestamp.fromMillis(Date.now() - 60000)
+            })
+        );
+    });
+
+    test("3 saniye dolmadan ikinci mesajı gönderemez", async () => {
+        await assertSucceeds(visitorAppend({ messages: arrayUnion(msg(CHAT_ID, "bir")) }));
+        await assertFails(visitorAppend({ messages: arrayUnion(msg(CHAT_ID, "iki")) }));
+    });
+
+    test("3 saniye geçtikten sonra tekrar gönderebilir", async () => {
+        await seedChat({
+            user: CHAT_ID,
+            messages: [msg(CHAT_ID, "ilk")],
+            lastVisitorMessageAt: Timestamp.fromMillis(Date.now() - 4000)
+        });
+        await assertSucceeds(visitorAppend({ messages: arrayUnion(msg(CHAT_ID, "iki")) }));
+    });
+
+    test("saati sunucudan 5 dakikadan fazla sapan mesajı ekleyemez", async () => {
+        await assertFails(
+            visitorAppend({ messages: arrayUnion(msg(CHAT_ID, "eski", Date.now() - 600000)) })
+        );
+        await assertFails(
+            visitorAppend({ messages: arrayUnion(msg(CHAT_ID, "gelecek", Date.now() + 600000)) })
         );
     });
 
     test("sahte admin mesajı ekleyemez", async () => {
-        await assertFails(
-            updateDoc(doc(visitorDb(), "chats", CHAT_ID), {
-                messages: arrayUnion(msg("admin", "sahte"))
-            })
-        );
+        await assertFails(visitorAppend({ messages: arrayUnion(msg("admin", "sahte")) }));
     });
 
     test("araya sahte admin mesajı sokup sona normal mesaj ekleyemez", async () => {
         await assertFails(
-            updateDoc(doc(visitorDb(), "chats", CHAT_ID), {
+            visitorAppend({
                 messages: [
-                    msg(CHAT_ID, "ilk"),
+                    msg(CHAT_ID, "ilk", 1700000000000),
                     msg("admin", "sahte"),
-                    msg(CHAT_ID, "son", 1700000000002)
+                    msg(CHAT_ID, "son")
                 ]
             })
         );
     });
 
     test("başka bir ziyaretçi adına mesaj ekleyemez", async () => {
-        await assertFails(
-            updateDoc(doc(visitorDb(), "chats", CHAT_ID), {
-                messages: arrayUnion(msg(OTHER_ID, "başkası"))
-            })
-        );
+        await assertFails(visitorAppend({ messages: arrayUnion(msg(OTHER_ID, "başkası")) }));
     });
 
     test("geçmiş mesajları silemez", async () => {
-        await assertFails(updateDoc(doc(visitorDb(), "chats", CHAT_ID), { messages: [] }));
+        await assertFails(visitorAppend({ messages: [] }));
     });
 
     test("geçmiş mesajı değiştiremez", async () => {
         await assertFails(
-            updateDoc(doc(visitorDb(), "chats", CHAT_ID), {
-                messages: [msg(CHAT_ID, "değiştirildi"), msg(CHAT_ID, "yeni", 1700000000001)]
+            visitorAppend({
+                messages: [msg(CHAT_ID, "değiştirildi", 1700000000000), msg(CHAT_ID, "yeni")]
             })
         );
     });
 
     test("aynı anda iki mesaj ekleyemez", async () => {
+        const now = Date.now();
         await assertFails(
-            updateDoc(doc(visitorDb(), "chats", CHAT_ID), {
-                messages: arrayUnion(msg(CHAT_ID, "a", 1), msg(CHAT_ID, "b", 2))
+            visitorAppend({
+                messages: arrayUnion(msg(CHAT_ID, "a", now), msg(CHAT_ID, "b", now + 1))
             })
         );
     });
 
     test("boş veya 2000 karakterden uzun mesaj ekleyemez", async () => {
+        await assertFails(visitorAppend({ messages: arrayUnion(msg(CHAT_ID, "")) }));
         await assertFails(
-            updateDoc(doc(visitorDb(), "chats", CHAT_ID), {
-                messages: arrayUnion(msg(CHAT_ID, ""))
-            })
-        );
-        await assertFails(
-            updateDoc(doc(visitorDb(), "chats", CHAT_ID), {
-                messages: arrayUnion(msg(CHAT_ID, "x".repeat(2001)))
-            })
+            visitorAppend({ messages: arrayUnion(msg(CHAT_ID, "x".repeat(2001))) })
         );
     });
 
     test("mesaja ekstra alan ekleyemez", async () => {
         await assertFails(
-            updateDoc(doc(visitorDb(), "chats", CHAT_ID), {
-                messages: arrayUnion({ ...msg(CHAT_ID, "x"), isAdmin: true })
-            })
+            visitorAppend({ messages: arrayUnion({ ...msg(CHAT_ID, "x"), isAdmin: true }) })
         );
     });
 
     test("mesajla birlikte başka alan değiştiremez", async () => {
         await assertFails(
-            updateDoc(doc(visitorDb(), "chats", CHAT_ID), {
-                messages: arrayUnion(msg(CHAT_ID, "x")),
-                user: OTHER_ID
-            })
+            visitorAppend({ messages: arrayUnion(msg(CHAT_ID, "x")), user: OTHER_ID })
         );
     });
 
     test("200 mesaj sınırını aşamaz", async () => {
         const full = Array.from({ length: 200 }, (_, i) => msg(CHAT_ID, "m", i));
         await seedChat({ user: CHAT_ID, messages: full });
-        await assertFails(
-            updateDoc(doc(visitorDb(), "chats", CHAT_ID), {
-                messages: arrayUnion(msg(CHAT_ID, "fazla", 999))
-            })
-        );
+        await assertFails(visitorAppend({ messages: arrayUnion(msg(CHAT_ID, "fazla")) }));
     });
 });
 

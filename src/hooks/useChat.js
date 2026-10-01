@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 // --- Sabitler ---
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_MESSAGE_COUNT = 200;
+const MIN_MESSAGE_INTERVAL_MS = 3000; // firestore.rules'taki spam sınırıyla aynı
 
 /**
  * Kullanıcı girdisini temizler.
@@ -141,6 +142,15 @@ export const useChat = (targetUserId = null) => {
             return;
         }
 
+        // Spam sınırı (asıl kontrol firestore.rules'ta, bu sadece kullanıcıya erken uyarı)
+        if (!asAdmin) {
+            const lastOwn = [...messages].reverse().find((m) => m.user === user);
+            if (lastOwn && Date.now() - lastOwn.time < MIN_MESSAGE_INTERVAL_MS) {
+                toast.error("Çok hızlı gönderiyorsunuz, birkaç saniye bekleyin.");
+                return;
+            }
+        }
+
         setSending(true);
 
         const newMessage = {
@@ -153,11 +163,15 @@ export const useChat = (targetUserId = null) => {
         setMessages((prev) => [...prev, newMessage]);
 
         // Send to DB
-        const response = await appendMessage(user, newMessage);
+        const response = await appendMessage(user, newMessage, { asVisitor: !asAdmin });
 
         if (!response.success) {
             setMessages((prev) => prev.filter((m) => m !== newMessage));
-            toast.error("Mesaj gönderilemedi! Lütfen internet bağlantınızı kontrol edin.");
+            toast.error(
+                response.error?.code === "permission-denied"
+                    ? "Mesaj gönderilemedi. Birkaç saniye bekleyip tekrar deneyin."
+                    : "Mesaj gönderilemedi! Lütfen internet bağlantınızı kontrol edin."
+            );
             console.error("Send Error:", response.error);
         } else {
             // Success Logic

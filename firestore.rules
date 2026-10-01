@@ -36,6 +36,32 @@ service cloud.firestore {
           && isValidMessage(after[after.size() - 1], chatId);
     }
 
+    // Ziyaretçi mesajındaki (cihazdan gelen) saat, sunucu saatine ±5 dakika
+    // yakın olmalı; geçmiş/gelecek tarihli mesaj yazılamaz.
+    function isRecentMillis(t) {
+      return t > request.time.toMillis() - 300000
+          && t < request.time.toMillis() + 300000;
+    }
+
+    // Spam sınırı: aynı sohbette ziyaretçi mesajları arasında en az 3 saniye.
+    // lastVisitorMessageAt istemciden serverTimestamp() ile gönderilir ve
+    // request.time'a eşit olmak zorunda; cihaz saatiyle oynanarak atlatılamaz.
+    function passesThrottle() {
+      let last = resource.data.get('lastVisitorMessageAt', null);
+      return request.resource.data.get('lastVisitorMessageAt', null) == request.time
+          && (last == null || request.time > last + duration.value(3, 's'));
+    }
+
+    // Ziyaretçinin sona tek mesaj eklemesi (admin bu kontrole tabi değil).
+    function isVisitorAppend(chatId) {
+      let after = request.resource.data.messages;
+      return request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['messages', 'lastVisitorMessageAt'])
+          && isSingleAppend(chatId)
+          && isRecentMillis(after[after.size() - 1].time)
+          && passesThrottle();
+    }
+
     // Mesajlar (chats)
     // Anonim kullanıcılar Firebase Auth kullanmadığı için request.auth null olur.
     // Doküman ID'si ziyaretçinin çerezindeki rastgele kimlikle birebir aynıdır
@@ -44,7 +70,8 @@ service cloud.firestore {
     // get   : Herkese açık (ziyaretçi kendi ID'sini biliyorsa kendi sohbetini görebilir)
     // list  : Sadece Admin (aksi halde herkes TÜM ziyaretçilerin mesajlarını tek sorguda çekebilirdi)
     // create: Yalnızca rastgele biçimli ID (32 hex), boş mesaj dizisi ve chatId == user ile.
-    // update: Admin her şeyi; ziyaretçi ya sona tek mesaj ekler ya da bildirim tokenını günceller.
+    // update: Admin her şeyi; ziyaretçi ya sona tek mesaj ekler (saat ve spam
+    //         kontrolüyle) ya da bildirim tokenını günceller.
     // delete: Sadece Admin
     match /chats/{chatId} {
       allow get: if true;
@@ -60,10 +87,7 @@ service cloud.firestore {
                    && request.resource.data.messages.size() == 0;
 
       allow update: if isAdmin()
-                   || (
-                     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['messages'])
-                     && isSingleAppend(chatId)
-                   )
+                   || isVisitorAppend(chatId)
                    || (
                      request.resource.data.diff(resource.data).affectedKeys()
                        .hasOnly(['fcmToken', 'tokenUpdatedAt'])
