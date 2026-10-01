@@ -64,6 +64,13 @@ describe("chats: oluşturma", () => {
         );
     });
 
+    test("tahmin edilebilir (zaman damgası) ID ile oluşturulamaz", async () => {
+        const oldId = (1700000000000).toString(16);
+        await assertFails(
+            setDoc(doc(visitorDb(), "chats", oldId), { user: oldId, messages: [] })
+        );
+    });
+
     test("mesajlarla dolu sohbet oluşturulamaz", async () => {
         await assertFails(
             setDoc(doc(visitorDb(), "chats", CHAT_ID), {

@@ -43,14 +43,15 @@ service cloud.firestore {
     // Kimliği bilmek = o sohbetin sahibi olmak, bu yüzden kimlik tahmin edilemez üretilir.
     // get   : Herkese açık (ziyaretçi kendi ID'sini biliyorsa kendi sohbetini görebilir)
     // list  : Sadece Admin (aksi halde herkes TÜM ziyaretçilerin mesajlarını tek sorguda çekebilirdi)
-    // create: Yalnızca boş mesaj dizisiyle ve chatId == user alanıyla belge oluşturulabilir.
+    // create: Yalnızca rastgele biçimli ID (32 hex), boş mesaj dizisi ve chatId == user ile.
     // update: Admin her şeyi; ziyaretçi ya sona tek mesaj ekler ya da bildirim tokenını günceller.
     // delete: Sadece Admin
     match /chats/{chatId} {
       allow get: if true;
       allow list: if isAdmin();
 
-      allow create: if request.resource.data.keys().hasOnly(['user', 'messages'])
+      allow create: if chatId.matches('^[0-9a-f]{32}$')
+                   && request.resource.data.keys().hasOnly(['user', 'messages'])
                    && request.resource.data.user is string
                    && request.resource.data.user.size() > 0
                    && request.resource.data.user.size() <= 100

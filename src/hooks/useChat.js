@@ -29,6 +29,8 @@ const sanitizeInput = (text) => {
  * crypto.getRandomValues, randomUUID'nin aksine HTTPS olmayan yerel ağ
  * adreslerinde (vite --host) de çalışır.
  */
+const VISITOR_ID_PATTERN = /^[0-9a-f]{32}$/;
+
 const generateVisitorId = () => {
     const bytes = new Uint8Array(16);
     crypto.getRandomValues(bytes);
@@ -58,6 +60,13 @@ export const useChat = (targetUserId = null) => {
             // SCENARIO 1: Visitor Mode (No targetUserId passed)
             if (!targetUserId) {
                 currentUser = Cookies.get('user');
+
+                // Eski (zaman damgası tabanlı, tahmin edilebilir) kimlikler
+                // yenisiyle değiştirilir; firestore.rules de artık yalnızca
+                // bu biçimdeki kimliklerle sohbet oluşturulmasına izin veriyor.
+                if (currentUser && !VISITOR_ID_PATTERN.test(currentUser)) {
+                    currentUser = undefined;
+                }
 
                 if (!currentUser) {
                     // Generate new ID — doküman ID'si de bu değerle aynı olacak (bkz. firestore.rules)
