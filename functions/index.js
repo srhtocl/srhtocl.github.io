@@ -29,8 +29,8 @@ exports.sendNotificationOnMessage = onDocumentUpdated(
         // En son mesajı al
         const newMsg = newData.messages[newData.messages.length - 1];
 
-        // Doküman ID'si Auto-ID olduğu için gerçek visitor ID "user" alanında
-        const userId = newData.user;
+        // Doküman ID'si ziyaretçinin kimliğiyle birebir aynı (bkz. firestore.rules)
+        const userId = event.params.userId;
 
         console.log("Yeni mesaj tespit edildi. Gonderen:", newMsg.user, "Chat Sahibi:", userId);
 

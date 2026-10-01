@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Cookies from "js-cookie";
-import { getDocumentById, setDocument, subscribeToMessages } from "../services/db-methods";
+import { getDocumentById, setDocument, appendMessage, subscribeToMessages } from "../services/db-methods";
 import { requestForToken } from "../services/notification";
 import toast from "react-hot-toast";
 
@@ -20,6 +20,19 @@ const sanitizeInput = (text) => {
         .replace(/[\u0000-\u001F\u007F]/g, '') // Kontrol karakterleri
         .trim()
         .substring(0, MAX_MESSAGE_LENGTH);
+};
+
+/**
+ * Tahmin edilemeyen ziyaretçi kimliği üretir (128 bit, hex).
+ * Doküman ID'si bu değerle aynı olduğundan kimliği bilen sohbeti okuyup
+ * yazabilir; eskiden kullanılan zaman damgası tahmin edilebiliyordu.
+ * crypto.getRandomValues, randomUUID'nin aksine HTTPS olmayan yerel ağ
+ * adreslerinde (vite --host) de çalışır.
+ */
+const generateVisitorId = () => {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 };
 
 export const useChat = (targetUserId = null) => {
@@ -48,7 +61,7 @@ export const useChat = (targetUserId = null) => {
 
                 if (!currentUser) {
                     // Generate new ID — doküman ID'si de bu değerle aynı olacak (bkz. firestore.rules)
-                    currentUser = (new Date()).getTime().toString(16);
+                    currentUser = generateVisitorId();
                     Cookies.set('user', currentUser, { expires: 7 });
 
                     const res = await setDocument(currentUser, { user: currentUser, messages: [] });
@@ -127,17 +140,14 @@ export const useChat = (targetUserId = null) => {
             data: sanitized
         };
 
-        const updatedMessages = [...messages, newMessage];
-
         // Optimistic UI Update
-        setMessages(updatedMessages);
-
-        const payload = { user: user, messages: updatedMessages };
+        setMessages((prev) => [...prev, newMessage]);
 
         // Send to DB
-        const response = await setDocument(user, payload);
+        const response = await appendMessage(user, newMessage);
 
         if (!response.success) {
+            setMessages((prev) => prev.filter((m) => m !== newMessage));
             toast.error("Mesaj gönderilemedi! Lütfen internet bağlantınızı kontrol edin.");
             console.error("Send Error:", response.error);
         } else {
